@@ -2,4 +2,6 @@
 <resources>
     <string name="test_wallpaper_label">Fold Test Wallpaper</string>
     <string name="test_wallpaper_description">Red on display 0, blue on other displays (spike)</string>
+    <string name="probe_accessibility_label">Fold Overlay Probe</string>
+    <string name="probe_accessibility_description">Spike: draws a coloured overlay with the display id on every lit display.</string>
 </resources>
