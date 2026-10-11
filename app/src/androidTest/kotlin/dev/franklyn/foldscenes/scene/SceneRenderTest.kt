@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.franklyn.foldscenes.overlay.SceneView
+import dev.franklyn.foldscenes.wallpaper.SceneBitmap
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -39,7 +40,7 @@ class SceneRenderTest {
     fun every_scene_renders_varied_and_progress_changes_it() {
         assertTrue(Scenes.all.isNotEmpty())
         for (scene in Scenes.all) for ((w, h) in sizes) {
-            val frames = ps.associateWith { p -> RenderHelper.renderScene(scene, w, h, p) }
+            val frames = ps.associateWith { p -> SceneBitmap.render(scene, w, h, p, 1f) }
             for ((p, bmp) in frames) {
                 val distinct = sampled(bmp).toSet().size
                 assertTrue("${scene.id} ${w}x$h p=$p distinct=$distinct", distinct > 20)

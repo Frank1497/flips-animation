@@ -6,9 +6,3 @@ fun panelFor(displayId: Int): Panel? = when (displayId) {
     1 -> Panel.COVER
     else -> null
 }
-
-/** True when a swap's hinge angle is physically plausible for its type (NaN is not). */
-fun isPlausibleSwap(event: SwapEvent): Boolean = when (event.type) {
-    SwapType.COVER_OFF -> event.angle in COVER_OFF_RANGE
-    SwapType.INNER_ON -> event.angle in INNER_ON_RANGE
-}

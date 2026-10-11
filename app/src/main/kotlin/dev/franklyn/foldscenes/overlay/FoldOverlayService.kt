@@ -13,29 +13,18 @@ import android.view.Choreographer
 import android.view.Display
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
-import dev.franklyn.foldscenes.fold.Calibration
 import dev.franklyn.foldscenes.fold.HingeSource
-import dev.franklyn.foldscenes.fold.PanelTracker
-import dev.franklyn.foldscenes.fold.SwapEvent
-import dev.franklyn.foldscenes.fold.isPlausibleSwap
 import dev.franklyn.foldscenes.fold.overlayAlpha
 import dev.franklyn.foldscenes.fold.panelFor
 import dev.franklyn.foldscenes.fold.progress
-import dev.franklyn.foldscenes.fold.updated
 import dev.franklyn.foldscenes.scene.Scenes
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 /**
  * Draws the fold scene over every lit panel (display 0 inner, display 1 cover) while the phone folds.
  *
- * Threading: everything here runs on the MAIN thread (display listener, Choreographer frames, the
- * swap collector on Dispatchers.Main.immediate). Scenes share one RuntimeShader each, which is not
- * safe for concurrent use, so a scene must never be drawn off the main thread.
+ * Threading: everything here runs on the MAIN thread (display listener, Choreographer frames).
+ * Scenes share one RuntimeShader each, which is not safe for concurrent use, so a scene must never be drawn off the main thread.
  */
 class FoldOverlayService : AccessibilityService() {
 
@@ -49,12 +38,7 @@ class FoldOverlayService : AccessibilityService() {
     private val overlays = mutableMapOf<Int, Overlay>()
     private var displayManager: DisplayManager? = null
     private var hinge: HingeSource? = null
-    private var tracker: PanelTracker? = null
-    private var scope: CoroutineScope? = null
     private var framePosted = false
-
-    private var calibration = Calibration()
-    private val swapEvents = mutableListOf<SwapEvent>()
 
     private val displayListener = object : DisplayManager.DisplayListener {
         override fun onDisplayAdded(displayId: Int) = sync()
@@ -75,14 +59,8 @@ class FoldOverlayService : AccessibilityService() {
         super.onServiceConnected()
         teardown() // a re-connect on the same instance must not leak the previous run
         val h = HingeSource(this)
-        val t = PanelTracker(this, h)
         hinge = h
-        tracker = t
         h.start()
-        t.start()
-        val s = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-        scope = s
-        s.launch { t.swaps.collect(::onSwap) }
         val dm = getSystemService(DisplayManager::class.java)
         displayManager = dm
         dm.registerDisplayListener(displayListener, Handler(Looper.getMainLooper()))
@@ -106,25 +84,10 @@ class FoldOverlayService : AccessibilityService() {
     private fun teardown() {
         displayManager?.unregisterDisplayListener(displayListener)
         displayManager = null
-        scope?.cancel()
-        scope = null
         overlays.keys.toList().forEach(::removeOverlay)
         stopFrames()
         hinge?.stop()
-        tracker?.stop()
         hinge = null
-        tracker = null
-    }
-
-    private fun onSwap(event: SwapEvent) {
-        if (!isPlausibleSwap(event)) {
-            Log.i(TAG, "swap ignored (implausible) ${event.type} angle=${event.angle}")
-            return
-        }
-        Log.i(TAG, "swap kept ${event.type} angle=${event.angle}")
-        swapEvents += event
-        calibration = updated(calibration, swapEvents)
-        Log.i(TAG, "calibration coverOff=${calibration.coverOffAngle} innerOn=${calibration.innerOnAngle}")
     }
 
     private fun sync() {
@@ -207,7 +170,7 @@ class FoldOverlayService : AccessibilityService() {
         val nowMs = SystemClock.uptimeMillis()
         for (o in overlays.values) {
             val panel = panelFor(o.displayId) ?: continue
-            val p = progress(panel, angle, calibration)
+            val p = progress(angle)
             val alpha = overlayAlpha(panel, angle, idleSeconds)
             if (abs(o.view.progress - p) > EPS) o.view.progress = p
             if (abs(o.view.alpha01 - alpha) > EPS) o.view.alpha01 = alpha

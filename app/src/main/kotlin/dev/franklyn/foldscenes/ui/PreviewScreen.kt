@@ -45,7 +45,7 @@ fun PreviewScreen(modifier: Modifier = Modifier) {
             FilterChip(selected = panel == Panel.INNER, onClick = { panel = Panel.INNER }, label = { Text("Inner") })
         }
         Slider(value = angle, onValueChange = { angle = it }, valueRange = 0f..180f)
-        val p = progress(panel, angle)
+        val p = progress(angle)
         Text("angle=$angle p=$p alpha=${overlayAlpha(panel, angle, 0f)}")
         Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
             // Fits within the available width and height at the panel's aspect ratio, centred.

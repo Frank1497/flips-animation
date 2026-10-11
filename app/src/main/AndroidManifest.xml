@@ -1,6 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <uses-permission android:name="android.permission.SET_WALLPAPER" />
+
+    <queries>
+        <intent>
+            <action android:name="com.motorola.intent.action.EDIT_SECONDARY_WALLPAPER" />
+            <data android:mimeType="image/*" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="false"
         android:label="Razr Fold Scenes"
