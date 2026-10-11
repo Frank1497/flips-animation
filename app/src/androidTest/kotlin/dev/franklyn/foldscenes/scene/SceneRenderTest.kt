@@ -51,6 +51,11 @@ class SceneRenderTest {
     }
 
     @Test
+    fun registry_lists_all_scenes_in_order() {
+        assertEquals(listOf("sunrise", "eclipse", "mountains"), Scenes.all.map { it.id })
+    }
+
+    @Test
     fun unknown_id_falls_back_to_scene_a() {
         assertEquals(Scenes.all.first().id, Scenes.byId("no-such-scene").id)
     }
