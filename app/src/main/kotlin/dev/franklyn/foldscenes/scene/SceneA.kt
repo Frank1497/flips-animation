@@ -13,7 +13,7 @@ class SceneA : Scene {
 
     // Created once, on first draw (keeps JVM unit tests that touch Scenes.all off the GPU classes).
     private val shader: RuntimeShader by lazy { RuntimeShader(AGSL) }
-    private val paint = Paint()
+    private val paint: Paint by lazy { Paint() }
 
     override fun draw(canvas: Canvas, width: Int, height: Int, p: Float, timeSeconds: Float) {
         if (width <= 0 || height <= 0) return

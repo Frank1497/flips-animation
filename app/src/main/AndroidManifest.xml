@@ -14,32 +14,16 @@
             </intent-filter>
         </activity>
         <service
-            android:name=".wallpaper.TestWallpaperService"
+            android:name=".overlay.FoldOverlayService"
             android:exported="true"
-            android:label="@string/test_wallpaper_label"
-            android:permission="android.permission.BIND_WALLPAPER">
-            <intent-filter>
-                <action android:name="android.service.wallpaper.WallpaperService" />
-            </intent-filter>
-            <meta-data
-                android:name="android.service.wallpaper"
-                android:resource="@xml/test_wallpaper" />
-            <!-- Motorola's cover-screen picker lists services carrying this tag (11 of its own do). -->
-            <meta-data
-                android:name="moto.cli.livewallpaper"
-                android:value="true" />
-        </service>
-        <service
-            android:name=".probe.ProbeAccessibilityService"
-            android:exported="true"
-            android:label="@string/probe_accessibility_label"
+            android:label="@string/fold_service_label"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService" />
             </intent-filter>
             <meta-data
                 android:name="android.accessibilityservice"
-                android:resource="@xml/probe_accessibility" />
+                android:resource="@xml/fold_accessibility" />
         </service>
     </application>
 

@@ -7,8 +7,6 @@ import dev.franklyn.foldscenes.overlay.SceneView
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
-import java.io.FileOutputStream
 import kotlin.math.abs
 
 class SceneRenderTest {
@@ -72,18 +70,5 @@ class SceneRenderTest {
         assertEquals(0f, lo, 0f)
         assertEquals(1f, pHi, 0f)
         assertEquals(0f, pLo, 0f)
-    }
-
-    /** One-off: writes frames to the app external files dir for the controller to inspect. */
-    @Test
-    fun dump_scene_a_frames() {
-        val ctx = InstrumentationRegistry.getInstrumentation().targetContext
-        val dir = ctx.getExternalFilesDir(null)!!
-        for ((w, h) in sizes) for (p in listOf(0f, 0.5f, 1f)) {
-            val bmp = RenderHelper.renderScene(Scenes.all.first(), w, h, p)
-            FileOutputStream(File(dir, "scene_a_p${(p * 100).toInt()}_${w}x$h.png")).use {
-                bmp.compress(Bitmap.CompressFormat.PNG, 100, it)
-            }
-        }
     }
 }

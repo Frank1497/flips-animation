@@ -3,5 +3,5 @@
     android:accessibilityEventTypes="typeWindowStateChanged"
     android:accessibilityFeedbackType="feedbackGeneric"
     android:canRetrieveWindowContent="false"
-    android:description="@string/probe_accessibility_description"
+    android:description="@string/fold_accessibility_description"
     android:isAccessibilityTool="true" />
