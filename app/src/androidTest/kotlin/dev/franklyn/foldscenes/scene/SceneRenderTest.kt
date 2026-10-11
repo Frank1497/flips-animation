@@ -80,6 +80,40 @@ class SceneRenderTest {
         assertEquals(0f, pLo, 0f)
     }
 
+    /** Mean colour of a [n]x[n] block centred on ([cx], [cy]) as an (r, g, b) triple. */
+    private fun blockMean(b: Bitmap, cx: Int, cy: Int, n: Int = 15): IntArray {
+        var r = 0L; var g = 0L; var bl = 0L
+        val x0 = cx - n / 2; val y0 = cy - n / 2
+        for (y in y0 until y0 + n) for (x in x0 until x0 + n) {
+            val c = b.getPixel(x, y)
+            r += Color.red(c); g += Color.green(c); bl += Color.blue(c)
+        }
+        val k = n * n
+        return intArrayOf((r / k).toInt(), (g / k).toInt(), (bl / k).toInt())
+    }
+
+    private fun isGreySkin(c: IntArray) =
+        c.all { it > 150 } && (c.max() - c.min()) < 40
+
+    private fun isPeachSkin(c: IntArray) =
+        c[0] > 200 && c[1] in 150..215 && c[2] in 110..190 && c[0] > c[2] + 40
+
+    private fun dist(a: IntArray, b: IntArray) =
+        Math.sqrt(((a[0] - b[0]) * (a[0] - b[0]) + (a[1] - b[1]) * (a[1] - b[1]) + (a[2] - b[2]) * (a[2] - b[2])).toDouble())
+
+    @Test
+    fun assets_are_loaded_in_app_process() {
+        val ids = mapOf(
+            "rick" to R.drawable.rick, "morty" to R.drawable.morty,
+            "spider" to R.drawable.spider, "miles" to R.drawable.miles,
+        )
+        for ((name, id) in ids) {
+            var bmp: Bitmap? = null
+            InstrumentationRegistry.getInstrumentation().runOnMainSync { bmp = SceneAssets.bitmap(id) }
+            assertTrue("SceneAssets.bitmap($name) is null: FoldScenesApp.init has not run", bmp != null)
+        }
+    }
+
     @Test
     fun rick_and_morty_halves_merge_at_rest() {
         val f = Scenes.byId("rickmorty")
@@ -88,6 +122,23 @@ class SceneRenderTest {
             val d = meanAbsDiff(SceneBitmap.render(f, w, h, 0f, 1f), SceneBitmap.render(f, w, h, 1f, 1f))
             assertTrue("rickmorty ${w}x$h p0 vs p1 diff=$d", d > 20)
         }
+        val w = 1080; val h = 1272
+        val bmp = SceneBitmap.render(f, w, h, 0f, 1f)
+        val rick = blockMean(bmp, (w * 0.5f - w * 0.12f).toInt(), h / 2)
+        val morty = blockMean(bmp, (w * 0.5f + w * 0.12f).toInt(), h / 2)
+        assertTrue("Rick side not grey skin: ${rick.toList()}", isGreySkin(rick))
+        assertTrue("Morty side not peach skin: ${morty.toList()}", isPeachSkin(morty))
+        val dd = dist(rick, morty)
+        assertTrue("halves too alike: dist=$dd rick=${rick.toList()} morty=${morty.toList()}", dd > 40)
+    }
+
+    @Test
+    fun face_scenes_draw_faces_not_just_background() {
+        val f = Scenes.byId("rickmorty")
+        val w = 1224; val h = 2992
+        val bmp = SceneBitmap.render(f, w, h, 1f, 1f)
+        val face = blockMean(bmp, w / 2, (h * 0.30f).toInt())
+        assertTrue("no Rick face at inner centre-top: ${face.toList()}", isGreySkin(face))
     }
 
     @Test

@@ -63,8 +63,11 @@ class SceneF : Scene {
     private val cache = GridCache({ gw, gh -> Buf(gw, gh) }, { it.bmp.recycle() })
     private val up = Paint().apply { isFilterBitmap = false; isAntiAlias = false }
     private val facePaint = Paint().apply { isFilterBitmap = true; isAntiAlias = true; isDither = true }
-    private val rickFace: Face? by lazy { makeFace(R.drawable.rick) }
-    private val mortyFace: Face? by lazy { makeFace(R.drawable.morty) }
+    // not `by lazy`: assets may be missing on the first frame; a null result must be retried next frame
+    private var rickFaceCache: Face? = null
+    private var mortyFaceCache: Face? = null
+    private fun rickFace(): Face? = rickFaceCache ?: makeFace(R.drawable.rick).also { rickFaceCache = it }
+    private fun mortyFace(): Face? = mortyFaceCache ?: makeFace(R.drawable.morty).also { mortyFaceCache = it }
     private val dstFace = RectF()
     private val dstShadow = RectF()
 
@@ -78,8 +81,8 @@ class SceneF : Scene {
         b.bmp.setPixels(b.px, 0, gw, 0, 0, gw, gh)
         canvas.drawBitmap(b.bmp, b.src, b.dst, up)
 
-        val rick = rickFace ?: return
-        val morty = mortyFace ?: return
+        val rick = rickFace() ?: return
+        val morty = mortyFace() ?: return
         faces(canvas, width, height, pp, rick, morty)
     }
 
@@ -252,7 +255,7 @@ class SceneF : Scene {
         const val CS = 7
         /** Face canvas width as a fraction of the panel width (cover / inner). */
         private const val COVER_FRAC = 0.675f
-        private const val INNER_FRAC = 0.94f
+        private const val INNER_FRAC = 0.70f
         private const val PAD = 60                 // shadow padding, in face-bitmap pixels
         private const val SHADOW_BLUR = 15f
         private const val SHADOW_DX = 12f
