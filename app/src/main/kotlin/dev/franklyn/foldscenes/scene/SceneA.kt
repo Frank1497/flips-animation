@@ -54,7 +54,8 @@ half4 main(float2 fc) {
     float w = iResolution.x;
     float h = iResolution.y;
     float hy = h * horizon;
-    float cx = w * 0.5;
+    float cx = w * 0.5;      // crease: horizon glow stays centred here
+    float sunX = w * 0.74;   // sun and its sea streak sit right of the home-screen clock
 
     float3 top = keyed(p,
         float3(6.0, 8.0, 26.0) / 255.0, float3(18.0, 16.0, 58.0) / 255.0,
@@ -92,10 +93,10 @@ half4 main(float2 fc) {
         }
 
         // sun and halo
-        float r = w * 0.17;
+        float r = w * 0.11;
         float u = sm(0.45, 1.0, p);
-        float sy = hy + r * 1.3 - u * hy * 0.78;
-        float ds = length(fc - float2(cx, sy));
+        float sy = hy + r * 1.3 - u * (hy + r * 1.3 - h * 0.30);
+        float ds = length(fc - float2(sunX, sy));
         float sun = clamp((r - ds) / 1.5, 0.0, 1.0);
         float halo = exp(-pow(ds / (r * 2.2), 2.0)) * 0.55;
         col = mix(col, float3(255.0, 238.0, 190.0) / 255.0, sun);
@@ -104,7 +105,7 @@ half4 main(float2 fc) {
         float3 sc = hor * 0.35;
         float depth = clamp((fc.y - hy) / max(h - hy, 1.0), 0.0, 1.0);
         col = sc + (top * 0.25 - sc) * depth;
-        float sx = (fc.x - cx) / (w * 0.07 * (0.5 + depth));
+        float sx = (fc.x - sunX) / (w * 0.07 * (0.5 + depth));
         float streak = exp(-sx * sx) * (1.0 - depth) * sm(0.45, 0.9, p);
         col += streak * float3(255.0, 200.0, 140.0) / 255.0 * 0.7;
         float k = 400.0 / w;
