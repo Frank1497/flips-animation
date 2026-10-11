@@ -13,6 +13,7 @@ import android.view.Choreographer
 import android.view.Display
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
+import dev.franklyn.foldscenes.BuildConfig
 import dev.franklyn.foldscenes.data.SceneRepository
 import dev.franklyn.foldscenes.fold.HingeSource
 import dev.franklyn.foldscenes.fold.overlayAlpha
@@ -45,6 +46,9 @@ class FoldOverlayService : AccessibilityService() {
     private var displayManager: DisplayManager? = null
     private var hinge: HingeSource? = null
     private var framePosted = false
+    private var pollPosted = false
+    private var pausedAtEventNanos = 0L
+    private val mainHandler = Handler(Looper.getMainLooper())
     private var repository: SceneRepository? = null
     private var scope: CoroutineScope? = null
 
@@ -57,9 +61,21 @@ class FoldOverlayService : AccessibilityService() {
     private val frameCallback = object : Choreographer.FrameCallback {
         override fun doFrame(frameTimeNanos: Long) {
             framePosted = false
+            if (overlays.isEmpty() || hinge == null) return
+            val busy = onFrame()
             if (overlays.isEmpty()) return
-            onFrame()
-            if (overlays.isNotEmpty()) postFrame()
+            if (busy) postFrame() else pauseFrames()
+        }
+    }
+
+    // While paused (every overlay invisible and the hinge quiet) no Choreographer callback is pending.
+    // This cheap poll notices a new hinge event within POLL_MS and restarts the frame loop.
+    private val resumePoll = object : Runnable {
+        override fun run() {
+            pollPosted = false
+            val h = hinge
+            if (h == null || overlays.isEmpty()) return // torn down: do not reschedule
+            if (h.lastEventNanos.value != pausedAtEventNanos) postFrame() else schedulePoll()
         }
     }
 
@@ -175,7 +191,21 @@ class FoldOverlayService : AccessibilityService() {
         if (overlays.isEmpty()) stopFrames()
     }
 
+    private fun pauseFrames() {
+        pausedAtEventNanos = hinge?.lastEventNanos?.value ?: 0L
+        schedulePoll()
+    }
+
+    private fun schedulePoll() {
+        if (pollPosted) return
+        pollPosted = true
+        mainHandler.postDelayed(resumePoll, POLL_MS)
+    }
+
     private fun postFrame() {
+        if (hinge == null) return // after teardown nothing may be scheduled
+        mainHandler.removeCallbacks(resumePoll)
+        pollPosted = false
         if (framePosted) return
         framePosted = true
         Choreographer.getInstance().postFrameCallback(frameCallback)
@@ -184,14 +214,18 @@ class FoldOverlayService : AccessibilityService() {
     private fun stopFrames() {
         Choreographer.getInstance().removeFrameCallback(frameCallback)
         framePosted = false
+        mainHandler.removeCallbacks(resumePoll)
+        pollPosted = false
     }
 
-    private fun onFrame() {
-        val h = hinge ?: return
+    /** Updates every overlay for this frame. Returns true while frames must keep coming (something visible or the hinge recently moved). */
+    private fun onFrame(): Boolean {
+        val h = hinge ?: return false
         val angle = h.angle.value
         val lastEvent = h.lastEventNanos.value
         val idleSeconds = if (lastEvent == 0L) 0f else (SystemClock.elapsedRealtimeNanos() - lastEvent) / 1e9f
         val nowMs = SystemClock.uptimeMillis()
+        var anyVisible = false
         for (o in overlays.values) {
             val panel = panelFor(o.displayId) ?: continue
             val p = progress(angle)
@@ -199,18 +233,24 @@ class FoldOverlayService : AccessibilityService() {
             if (abs(o.view.progress - p) > EPS) o.view.progress = p
             if (abs(o.view.alpha01 - alpha) > EPS) o.view.alpha01 = alpha
             if (alpha > 0f) {
+                anyVisible = true
                 o.view.invalidate() // the scene animates with time (twinkle), so redraw every frame while visible
-                if (nowMs - o.lastLogMs >= LOG_INTERVAL_MS) {
+                if (BuildConfig.DEBUG && nowMs - o.lastLogMs >= LOG_INTERVAL_MS) {
                     o.lastLogMs = nowMs
                     Log.i(TAG, "frame display=${o.displayId} angle=$angle p=$p alpha=$alpha")
                 }
             }
         }
+        // No event yet (lastEvent == 0) counts as quiet: the first event resumes the loop via the poll.
+        val hingeQuiet = lastEvent == 0L || idleSeconds >= PAUSE_AFTER_S
+        return anyVisible || !hingeQuiet
     }
 
     private companion object {
         const val TAG = "FoldScenes"
         const val EPS = 0.001f
         const val LOG_INTERVAL_MS = 100L
+        const val POLL_MS = 250L
+        const val PAUSE_AFTER_S = 1.5f
     }
 }

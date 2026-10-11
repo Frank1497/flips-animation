@@ -64,10 +64,23 @@ class SceneF : Scene {
     private val up = Paint().apply { isFilterBitmap = false; isAntiAlias = false }
     private val facePaint = Paint().apply { isFilterBitmap = true; isAntiAlias = true; isDither = true }
     // not `by lazy`: assets may be missing on the first frame; a null result must be retried next frame
-    private var rickFaceCache: Face? = null
-    private var mortyFaceCache: Face? = null
+    // @Volatile: the pre-warm writes these from a background thread, the main-thread draw reads them.
+    // A face is immutable once published; a rare duplicate build (draw and pre-warm racing) is harmless.
+    @Volatile private var rickFaceCache: Face? = null
+    @Volatile private var mortyFaceCache: Face? = null
     private fun rickFace(): Face? = rickFaceCache ?: makeFace(R.drawable.rick).also { rickFaceCache = it }
     private fun mortyFace(): Face? = mortyFaceCache ?: makeFace(R.drawable.morty).also { mortyFaceCache = it }
+
+    /**
+     * Builds both faces (decode + shadow blur, the expensive part) so the first draw does not. Safe to call
+     * from any thread: it touches no Canvas, Paint or scene state, only [SceneAssets] (synchronised) and
+     * the volatile caches. Drawing stays main-thread only.
+     */
+    fun prewarm() {
+        rickFace()
+        mortyFace()
+    }
+
     private val dstFace = RectF()
     private val dstShadow = RectF()
 

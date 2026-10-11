@@ -15,6 +15,9 @@ class SceneView(context: Context) : View(context) {
     var scene: Scene = Scenes.all.first()
         set(value) { field = value; invalidate() }
 
+    // The scene whose draw threw. It is skipped (and logged once) rather than failing again every frame.
+    private var failedScene: Scene? = null
+
     var progress: Float = 0f
         set(value) { field = clamp01(value); invalidate() }
 
@@ -33,6 +36,8 @@ class SceneView(context: Context) : View(context) {
 
     override fun onDraw(canvas: Canvas) {
         if (alpha01 <= 0f || width <= 0 || height <= 0) return
+        val current = scene
+        if (failedScene === current) return
         val seconds = (SystemClock.uptimeMillis() % TIME_WRAP_MS) / 1000f
         // A layer is only needed to fade the scene; at full opacity draw it directly.
         val save = if (alpha01 >= 1f) {
@@ -41,10 +46,11 @@ class SceneView(context: Context) : View(context) {
             canvas.saveLayerAlpha(0f, 0f, width.toFloat(), height.toFloat(), (alpha01 * 255f).roundToInt())
         }
         try {
-            scene.draw(canvas, width, height, progress, seconds)
+            current.draw(canvas, width, height, progress, seconds)
         } catch (t: Throwable) {
             // A shader failure must not take the service process down.
-            Log.e(TAG, "scene ${scene.id} draw failed: ${t.javaClass.name}: ${t.message}", t)
+            failedScene = current
+            Log.e(TAG, "scene ${current.id} draw failed (disabled until the scene changes): ${t.javaClass.name}: ${t.message}", t)
         } finally {
             if (save >= 0) canvas.restoreToCount(save)
         }

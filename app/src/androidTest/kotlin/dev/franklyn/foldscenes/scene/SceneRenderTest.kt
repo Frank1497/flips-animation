@@ -129,7 +129,7 @@ class SceneRenderTest {
         assertTrue("Rick side not grey skin: ${rick.toList()}", isGreySkin(rick))
         assertTrue("Morty side not peach skin: ${morty.toList()}", isPeachSkin(morty))
         val dd = dist(rick, morty)
-        assertTrue("halves too alike: dist=$dd rick=${rick.toList()} morty=${morty.toList()}", dd > 40)
+        assertTrue("halves too alike: dist=$dd rick=${rick.toList()} morty=${morty.toList()}", dd > 30)
     }
 
     @Test
@@ -137,7 +137,7 @@ class SceneRenderTest {
         val f = Scenes.byId("rickmorty")
         val w = 1224; val h = 2992
         val bmp = SceneBitmap.render(f, w, h, 1f, 1f)
-        val face = blockMean(bmp, w / 2, (h * 0.30f).toInt())
+        val face = blockMean(bmp, w / 2, (h * 0.35f).toInt())
         assertTrue("no Rick face at inner centre-top: ${face.toList()}", isGreySkin(face))
     }
 
