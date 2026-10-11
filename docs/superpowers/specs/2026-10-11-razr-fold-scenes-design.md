@@ -2,6 +2,7 @@
 
 Date: 2026-10-11. Owner: Franklyn. Status: awaiting written-spec approval.
 Supersedes the wallpaper-service design committed as `d3576a1`. Reason in section 3.
+Amendment v3 (2026-10-11, approved by Franklyn): hybrid of real wallpapers at rest plus the overlay during the fold. Sections 3, 4, 6, 7, 8, 9 and 12 changed.
 
 ## 1. Goal
 
@@ -23,6 +24,8 @@ inner screen, and the screen swap reads as a blink inside one continuous animati
 | Cover wallpaper route | NO-GO. Motorola's cover picker offers Google Photos and Motorola Themes only. Our service did not appear there, with or without the `moto.cli.livewallpaper` tag | tested 21:10 |
 | Cover overlay | PASS. `TYPE_ACCESSIBILITY_OVERLAY` through `createDisplayContext().createWindowContext()` drew on display 1 while closed | probe screenshot, commit `8473ea3` |
 | Inner overlay | PASS. Same call drew on display 0, 1224x2992, 39 ms after the panel turned on | probe screenshot |
+| Live fold (21:43) | Closing: inner stayed lit from 106 deg to about 6 deg. Opening: cover off at 93 deg, inner on at 104 deg, gap 0.14 s. The swap angle depends on fold speed, so the earlier 56 and 109 were a fast-fold artefact | FoldScenes log |
+| Cover wallpaper editor | `com.motorola.intent.action.EDIT_SECONDARY_WALLPAPER` with an `image/*` content URI opens Motorola's `WallpaperPickerMainDisplayActivity` and shows the image, but only if the intent carries `FLAG_GRANT_READ_URI_PERMISSION`. It ends on a Save button | tested 22:00 |
 | Accessibility enable | `adb shell settings put secure enabled_accessibility_services ...` works. Duo Open's service stays listed alongside ours | probe report |
 
 ## 3. What changed from v1, and why
@@ -32,9 +35,11 @@ accessibility overlay needs no picker and draws on both displays. The cost: the 
 a full-screen animation during the fold, not a permanent wallpaper behind the icons.
 The overlay fades out when the phone rests flat or shut.
 
+**v3 amendment.** At rest the overlay is invisible, so Motorola's wallpaper showed. Franklyn requires the scene to stay when the phone is closed and open. The app therefore also sets real wallpapers: the scene frame at p = 0 on the cover and p = 1 on the inner screen. The overlay animates between those two frames during the fold and fades into them, so the handoff is seamless. Choosing a scene in the app sets both wallpapers.
+
 ## 4. Non-goals
 
-- No permanent wallpaper behind icons and widgets.
+- No silent cover wallpaper change. Motorola's editor needs one tap on Save per scene change. The service never reads the screen to press it.
 - No Wolverine and no God of War scenes.
 - No real 3D models. Rick and Morty faces are flat art with a soft shadow.
 - Not published. The Rick and Morty and Spider-Verse art is private use only.
@@ -60,42 +65,38 @@ One Gradle module, Kotlin, minSdk 33, targetSdk 36.
 | Unit | Purpose | Depends on |
 |---|---|---|
 | `HingeSource` | Registers `Sensor.TYPE_HINGE_ANGLE`, emits angle 0..180 only while the overlay service runs | SensorManager |
-| `PanelTracker` | Emits which displays are lit and each swap event with the angle at that moment | DisplayManager, HingeSource |
-| `ProgressMapper` | Pure: (panel, angle, calibration) to progress p | none |
+| `ProgressMapper` | Pure: angle to progress p, linear | none |
 | `OverlayAlpha` | Pure: (panel, angle, secondsSinceLastMove) to overlay alpha 0..1 | none |
-| `CalibrationUpdater` | Median of the last 10 swap angles, replaces the 56 and 109 defaults | PanelTracker |
+| `SceneBitmap` | Renders a `Scene` at a given size, p and time to a `Bitmap` through the hardware path (`RenderNode`, `HardwareRenderer`, `ImageReader`) | Scene |
+| `WallpaperApplier` | Inner: `WallpaperManager.setBitmap` of the p = 1 frame (home). Cover: saves the p = 0 frame to MediaStore, then opens Motorola's cover editor with `FLAG_GRANT_READ_URI_PERMISSION`; Franklyn taps Save | SceneBitmap |
 | `Scene` | `draw(canvas, w, h, p, timeSeconds)` | none |
 | Scenes A, B, C | AGSL `RuntimeShader` plus Canvas | Scene |
 | Scenes D, F | Low-res grid scaled nearest-neighbour plus bitmap assets | Scene |
 | `FoldOverlayService` | `AccessibilityService`. Per lit display, adds one overlay window and drives it on `Choreographer`. Removes it when the display turns off | all above |
 | `SceneView` | Custom `View` in each overlay. Draws the active scene at p and alpha | Scene |
-| `PickerActivity` | Compose: tick scenes, Pin or Rotate, preview slider, enable-service status and a button to the accessibility settings | SceneRepository |
+| `PickerActivity` | Compose: tick scenes, Pin or Rotate, preview slider, Set inner wallpaper and Set cover wallpaper buttons, enable-service status and a button to the accessibility settings | SceneRepository, WallpaperApplier |
 | `SceneRepository` | Ticked set, mode, last index, in DataStore | DataStore |
 
 Overlay window: `TYPE_ACCESSIBILITY_OVERLAY`, `FLAG_NOT_TOUCHABLE | FLAG_NOT_FOCUSABLE | FLAG_LAYOUT_IN_SCREEN`, `PixelFormat.TRANSLUCENT`. Created with `createDisplayContext(display).createWindowContext(TYPE_ACCESSIBILITY_OVERLAY, null)`. Proven in the probe.
 
 ## 7. Progress, alpha and the dark gap
 
-The OS owns the gap. The app removes the jump and the dead range.
+The OS owns the gap, and the swap angle depends on fold speed (section 2). The mapping therefore does not depend on swap angles at all.
 
-With Ac = angle where the cover turns off (default 56) and Ai = angle where the inner turns on (default 109):
-
-- Cover lit: `p = 0.5 * min(angle, Ac) / Ac`
-- Inner lit: `p = 0.5 + 0.5 * (angle - Ai) / (180 - Ai)`, clamped to 0.5..1
-
-At the swap both panels show p = 0.5.
-
-Alpha, so the overlay does not hide the home screen at rest:
-
-- Cover: `alpha = smoothstep(0, 12, angle)`
-- Inner: `alpha = smoothstep(0, 12, 180 - angle)`
-- If the angle has not changed for 0.7 s, alpha fades to 0 over 0.3 s (tent mode, resting half-open). Any new movement restores it.
+- `p = angle / 180` on both panels, clamped 0..1. NaN is 0.
+- Cover rest frame: p = 0. Inner rest frame: p = 1. The wallpapers are exactly those frames.
+- Each lit panel draws the scene at its own p, so p is continuous across the swap whatever the swap angle.
+- Alpha, so the overlay fades into the wallpaper at rest: cover `smoothstep(0, 12, angle)`, inner `smoothstep(0, 12, 180 - angle)`. If the angle has not changed for 0.7 s, alpha falls to 0 by 1.0 s (tent mode). Any new movement restores it.
+- No calibration and no swap-event handling. The earlier Calibration, CalibrationUpdater and swap gating are removed.
 
 ## 8. Picker behaviour
 
 - Tick any of the five scenes. At least one must stay ticked.
 - Pin (one chosen scene) or Rotate (next ticked scene on each unfold).
 - Preview: a 0..180 slider that drives p and alpha on a panel-sized preview.
+- Set inner wallpaper: one tap, applies the scene's p = 1 frame as the inner home wallpaper. Previous wallpaper is replaced.
+- Set cover wallpaper: opens Motorola's cover editor showing the p = 0 frame. Franklyn taps Save.
+- Rotate mode conflicts with this: the cover wallpaper cannot change without a tap. Decision deferred to Task 9: Rotate changes the inner wallpaper and the overlay scene automatically and prompts for the cover tap, or Rotate is dropped.
 - Service status: shows enabled or disabled, with a button to Accessibility settings and the adb command in a help line.
 
 ## 9. Risks
@@ -107,6 +108,8 @@ Alpha, so the overlay does not hide the home screen at rest:
 | Frame rate of a full-screen shader on 1224x2992 | Stutter | Scenes D and F draw at 1/7 scale. Measure `dumpsys gfxinfo` in Task 8. Cut effects if frames miss 16.7 ms on 5% or more |
 | Hinge events pause below 30 deg (OnePlus did) | Cover end stalls | Hold the last angle. Use the closed device state to force p = 0 |
 | Overlay hides a banking or secure screen | Safety | Overlay never takes touch. It fades when idle. No screenshots taken |
+| Motorola's cover editor or its intent may change in an update | Cover wallpaper step fails | The picker shows a clear error when the intent does not resolve. The image is also saved in Pictures so Franklyn can set it by hand |
+| Setting the inner wallpaper replaces Franklyn's current one | He loses it | Say so in the picker. The previous wallpaper is not backed up |
 | Source art is low resolution and copyrighted | Soft faces. Not publishable | Private use only |
 
 ## 10. Testing
@@ -125,10 +128,11 @@ AGP 9.4.1, Kotlin 2.4.21, Compose BOM 2026.06.01.
 
 1. Toolchain and empty app. Done.
 2. Cover and inner overlay probe. Done, both pass.
-3. Mapper and alpha (pure, tested).
-4. Calibration (pure, tested).
-5. Hinge source and panel tracker.
-6. Overlay service, scene view, scene A, preview slider. Probe and test wallpaper code removed.
+3. Mapper and alpha (pure, tested). Done.
+4. Calibration (pure, tested). Done, removed again in 6c.
+5. Hinge source and panel tracker. Done.
+6. Overlay service, scene view, scene A, preview slider. Done (6a, 6b).
+6c. Linear progress, remove calibration and swap handling, SceneBitmap, WallpaperApplier, apply buttons.
 7. Scenes B and C.
 8. Scenes D and F with assets.
 9. Picker, repository, Pin and Rotate, service status.

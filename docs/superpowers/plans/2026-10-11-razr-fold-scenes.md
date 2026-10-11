@@ -15,6 +15,7 @@
 ## Status
 
 - Task 1 complete: toolchain and empty app (`ade87b5`).
+- Tasks 3 to 6b complete (see the ledger). Task 6c adds the v3 wallpaper design.
 - Task 2 complete: the cover wallpaper route is NO-GO. The accessibility overlay passed on both displays (`8473ea3`). Task 2's wallpaper code is removed in Task 6.
 
 ## Global Constraints
@@ -23,8 +24,8 @@
 - minSdk 33, targetSdk 36, compileSdk 36, Java 17. AGP 9.4.1, Kotlin 2.4.21, Compose BOM 2026.06.01.
 - Project `/home/franklyn/Projects/razr-fold-scenes`, branch `feat/fold-scenes`, package `dev.franklyn.foldscenes`. Run `source env.sh` before every Gradle call.
 - Displays: inner is display 0 (1224x2992), cover is display 1 (1080x1272, `FLAG_PRESENTATION`).
-- Swap defaults: cover turns off at 56 deg, inner turns on at 109 deg.
-- Progress: cover `p = 0.5 * min(angle, Ac) / Ac`. Inner `p = 0.5 + 0.5 * (angle - Ai) / (180 - Ai)`, clamped 0.5..1.
+- Progress (v3): `p = angle / 180` on both panels, clamped 0..1, NaN is 0. No calibration. Cover rest frame is p = 0, inner rest frame is p = 1.
+- Wallpapers (v3, a MUST from Franklyn): choosing a scene sets both wallpapers. Inner: `WallpaperManager.setBitmap` with the p = 1 frame (home). Cover: the p = 0 frame saved to MediaStore, then Motorola's editor opened with `com.motorola.intent.action.EDIT_SECONDARY_WALLPAPER`, type `image/png`, the content URI and `FLAG_GRANT_READ_URI_PERMISSION` (without the flag the preview is blank). Franklyn taps Save. The service never presses it.
 - Alpha: cover `smoothstep(0, 12, angle)`. Inner `smoothstep(0, 12, 180 - angle)`. Idle factor: 1 until 0.7 s since the angle last changed, then falls linearly to 0 at 1.0 s. Alpha = base times idle factor.
 - Overlay window: `TYPE_ACCESSIBILITY_OVERLAY`, flags `FLAG_NOT_TOUCHABLE | FLAG_NOT_FOCUSABLE | FLAG_LAYOUT_IN_SCREEN`, `PixelFormat.TRANSLUCENT`, created with `createDisplayContext(display).createWindowContext(TYPE_ACCESSIBILITY_OVERLAY, null)`. Proven in `8473ea3`.
 - Scenes are exactly A, B, C, D, F. Face split applies to F only. No wallpaper service.
@@ -141,6 +142,27 @@
 - [ ] **Step 9: Install and enable on the phone.** Set `enabled_accessibility_services` to exactly our service (this disables Duo Open's service without uninstalling it) and `accessibility_enabled` to 1. Read it back. Then screenshot each display while the overlay shows, and fold slowly once with `logcat` recording p and alpha.
 - [ ] **Step 10: Commit** `feat: overlay service, scene A, preview; remove probes`.
 
+### Task 6c: Linear progress, remove calibration, SceneBitmap, WallpaperApplier
+
+**Files:**
+- Modify: `fold/ProgressMapper.kt`, `fold/PanelRouting.kt`, `overlay/FoldOverlayService.kt`, `ui/PreviewScreen.kt`, `PickerActivity.kt`, `AndroidManifest.xml`, `androidTest/.../scene/SceneRenderTest.kt`
+- Delete: `fold/CalibrationUpdater.kt`, `fold/PanelTracker.kt`, their tests (`CalibrationUpdaterTest.kt`, `PanelSwapTest.kt`), and `PanelRoutingTest` cases for `isPlausibleSwap`
+- Create: `wallpaper/SceneBitmap.kt` (move the logic of `androidTest/.../scene/RenderHelper.kt` into main), `wallpaper/WallpaperApplier.kt`, tests below
+
+**Interfaces:**
+- Produces: `fun progress(angle: Float): Float` (replaces the panel and calibration form), `object SceneBitmap { fun render(scene: Scene, width: Int, height: Int, p: Float, timeSeconds: Float = 0f): Bitmap }` (hardware route), `object WallpaperApplier { fun applyInner(context: Context, scene: Scene): Result<Unit>; fun applyCover(context: Context, scene: Scene): Result<Uri>; fun coverFileName(sceneId: String): String }`.
+- Constants: inner size 1224x2992, cover size 1080x1272.
+
+- [ ] **Step 1: Rewrite `ProgressMapperTest` first.** `zero_is_zero`, `flat_is_one`, `ninety_is_half`, `linear` (p equals angle/180 within 1e-6 every 1 deg), `monotonic`, `bad_angles_clamp` (NaN, -10, 400 stay in 0..1). Add `coverFileName_is_stable_and_safe`: `coverFileName("sunrise") == "razrfold_sunrise_cover.png"` and an id with unsafe characters is sanitized to letters, digits and underscores. Run it. Expected: FAIL.
+- [ ] **Step 2: Implement** `progress(angle)` and `coverFileName`. Remove `Calibration`, `isValid`, the range constants, `CalibrationUpdater`, `PanelTracker`, `swapFor`, `isPlausibleSwap` and their tests. Keep `Panel`, `panelFor`, `sanitizeAngle`, `overlayAlpha`. Update every caller (service, PreviewScreen). Run `testDebugUnitTest`. Expected: PASS.
+- [ ] **Step 3: Update `FoldOverlayService`.** Drop the tracker, the swap collector, `calibration` and `swapEvents`. `p = progress(hinge.angle.value)`. Log lines for frames and overlay add and remove stay.
+- [ ] **Step 4: Write the instrumented tests (RED first).** `scene_bitmap_has_requested_size_and_content` (inner 1224x2992 and cover 1080x1272, more than 20 distinct sampled colours), `rest_frames_differ` (p = 0 differs from p = 1, mean channel difference over 8), `cover_editor_intent_resolves` (`PackageManager.resolveActivity` for the Moto action with type `image/png` is not null on this phone), `applyCover_inserts_mediastore_row_and_overwrites` (call the save half twice, exactly one row named `razrfold_sunrise_cover.png` remains; do NOT start the editor activity in this test, split the save into `saveCoverFrame(context, scene): Uri` that the test calls). Do not call `setBitmap` in any test.
+- [ ] **Step 5: Implement `SceneBitmap.render`** with `RenderNode`, `HardwareRenderer` and `ImageReader` exactly as the existing test helper does, then delete the test helper and point `SceneRenderTest` at `SceneBitmap`.
+- [ ] **Step 6: Implement `WallpaperApplier`.** `applyInner`: render p = 1 at 1224x2992, `WallpaperManager.getInstance(context).setBitmap(bitmap, null, true, WallpaperManager.FLAG_SYSTEM)`, return `Result`. `applyCover`: `saveCoverFrame` renders p = 0 at 1080x1272 and writes it with `MediaStore.Images` into `Pictures/RazrFoldScenes` (delete an existing row with the same name first; use `IS_PENDING`), then `startActivity` of the intent from Global Constraints with `FLAG_ACTIVITY_NEW_TASK`. If the intent does not resolve, return a failure whose message says the image is saved in Pictures/RazrFoldScenes. Add `<uses-permission android:name="android.permission.SET_WALLPAPER" />`. Run all rendering off the main thread except the scene `draw` call, which must stay on the main thread (shared shader invariant): render through a `Handler(Looper.getMainLooper())` hop or `withContext(Dispatchers.Main)`.
+- [ ] **Step 7: UI.** In `PickerActivity`, under the preview: a button "Set inner wallpaper" and a button "Set cover wallpaper". Show the Result as a text line (success, or the failure message). A one-line note under the cover button: "Opens Motorola's editor. Tap Save there."
+- [ ] **Step 8: Verify.** `assembleDebug assembleDebugAndroidTest testDebugUnitTest`, install both APKs by the proven route, run the instrument and report `OK (N tests)`. Do NOT tap either apply button on the phone and never call `setBitmap` on the device. The controller applies the wallpapers with Franklyn.
+- [ ] **Step 9: Commit** `feat: linear progress, wallpaper applier; remove calibration`.
+
 ### Task 7: Scenes B and C
 
 **Files:**
@@ -191,7 +213,8 @@
 - [ ] **Step 2: Run.** Expected: FAIL.
 - [ ] **Step 3: Implement `nextScene`** as a pure function. Back it with `SceneRepository` on DataStore. The service calls `nextScene` once per unfold, when the angle first rises above 20 deg after being closed.
 - [ ] **Step 4: Run.** Expected: PASS.
-- [ ] **Step 5: Build the picker in Compose** inside a `Scaffold` (fixes the inset finding from Task 1). Five scene checkboxes, the Pin and Rotate toggle, a block on unticking the last scene, a Preview button, and a service-status row that shows enabled or disabled, with a button to Accessibility settings and the adb command as help text.
+- [ ] **Step 5: Build the picker in Compose.** Choosing or pinning a scene calls `WallpaperApplier` for both screens (the cover opens Motorola's editor). Rotate mode: decide with Franklyn first, see spec section 8; until then Pin only.
+- [ ] **Step 5b: Build the picker in Compose** inside a `Scaffold` (fixes the inset finding from Task 1). Five scene checkboxes, the Pin and Rotate toggle, a block on unticking the last scene, a Preview button, and a service-status row that shows enabled or disabled, with a button to Accessibility settings and the adb command as help text.
 - [ ] **Step 6: Install and tick a scene in the app.** Expected: the next fold plays that scene. Verify with `logcat`.
 - [ ] **Step 7: Commit** `feat: picker with pin, rotate and service status`.
 
@@ -204,5 +227,5 @@
 - [ ] **Step 2: Check the log.** At each swap, `p` on the last cover frame and the first inner frame differ by at most 0.05. Closing mirrors opening. Expected: true for all five.
 - [ ] **Step 3: Test the lock screen.** Fold with the phone locked. Record whether the overlay draws, in `acceptance.md`.
 - [ ] **Step 4: Franklyn watches** one open and one close per scene and answers pass or fail per scene in `acceptance.md`.
-- [ ] **Step 5: Update calibration defaults** in `Calibration` to the measured medians if they differ by more than 5 deg from 56 and 109.
+- [ ] **Step 5: Confirm at rest.** The wallpaper frame persists closed and open, and the overlay fades into it with no visible jump at either end, on both screens.
 - [ ] **Step 6: Commit** `test: real-fold acceptance`.
