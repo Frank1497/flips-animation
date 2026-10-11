@@ -11,6 +11,7 @@
     </queries>
 
     <application
+        android:name=".FoldScenesApp"
         android:allowBackup="false"
         android:label="Razr Fold Scenes"
         android:theme="@android:style/Theme.Material.NoActionBar">

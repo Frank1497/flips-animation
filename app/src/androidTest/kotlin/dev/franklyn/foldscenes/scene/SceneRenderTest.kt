@@ -1,8 +1,10 @@
 package dev.franklyn.foldscenes.scene
 
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import androidx.test.platform.app.InstrumentationRegistry
+import dev.franklyn.foldscenes.R
 import dev.franklyn.foldscenes.overlay.SceneView
 import dev.franklyn.foldscenes.wallpaper.SceneBitmap
 import org.junit.Assert.assertEquals
@@ -52,7 +54,7 @@ class SceneRenderTest {
 
     @Test
     fun registry_lists_all_scenes_in_order() {
-        assertEquals(listOf("sunrise", "eclipse", "mountains"), Scenes.all.map { it.id })
+        assertEquals(listOf("sunrise", "eclipse", "mountains", "spiderverse", "rickmorty"), Scenes.all.map { it.id })
     }
 
     @Test
@@ -76,5 +78,35 @@ class SceneRenderTest {
         assertEquals(0f, lo, 0f)
         assertEquals(1f, pHi, 0f)
         assertEquals(0f, pLo, 0f)
+    }
+
+    @Test
+    fun rick_and_morty_halves_merge_at_rest() {
+        val f = Scenes.byId("rickmorty")
+        assertEquals("rickmorty", f.id)
+        for ((w, h) in sizes) {
+            val d = meanAbsDiff(SceneBitmap.render(f, w, h, 0f, 1f), SceneBitmap.render(f, w, h, 1f, 1f))
+            assertTrue("rickmorty ${w}x$h p0 vs p1 diff=$d", d > 20)
+        }
+    }
+
+    @Test
+    fun assets_decode() {
+        val res = InstrumentationRegistry.getInstrumentation().targetContext.resources
+        val ids = mapOf(
+            "rick" to R.drawable.rick, "morty" to R.drawable.morty,
+            "spider" to R.drawable.spider, "miles" to R.drawable.miles,
+        )
+        for ((name, id) in ids) {
+            val opts = BitmapFactory.Options().apply { inScaled = false }
+            val b = BitmapFactory.decodeResource(res, id, opts)
+            assertTrue("$name decodes", b != null && b.width > 0 && b.height > 0)
+            val px = IntArray(b.width * b.height)
+            b.getPixels(px, 0, b.width, 0, 0, b.width, b.height)
+            val opaque = px.count { Color.alpha(it) > 0 }
+            // the 32x34 sprites only hold ~650 opaque pixels by construction; the faces hold >70k
+            val min = if (name == "rick" || name == "morty") 1000 else 300
+            assertTrue("$name opaque=$opaque", opaque >= min)
+        }
     }
 }
