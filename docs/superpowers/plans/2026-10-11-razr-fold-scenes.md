@@ -193,30 +193,33 @@
 - [ ] **Step 5: Run `SceneRenderTest`.** Expected: PASS. Then `dumpsys gfxinfo` while the preview slider sweeps. Record frame times. Missing 16.7 ms on 5% or more of frames means cut effects.
 - [ ] **Step 6: Commit** `feat: scenes D and F with assets`.
 
-### Task 9: Picker, repository, Pin and Rotate, service status
+### Task 9: Scene picker (pin one scene), repository, service status, deferred fixes
+
+Rotate mode is DROPPED (Franklyn, 22:41): the cover wallpaper needs his tap per change, so one pinned scene keeps both wallpapers and the overlay matched.
 
 **Files:**
-- Create: `.../data/SceneRepository.kt`, `.../data/RotationPolicy.kt`
-- Modify: `PickerActivity.kt`, `FoldOverlayService.kt`
-- Test: `app/src/test/kotlin/dev/franklyn/foldscenes/data/RotationPolicyTest.kt`
+- Create: `.../data/SceneRepository.kt`, `.../data/SceneChoice.kt`, `.../ui/PickerScreen.kt`, `.../ui/ServiceStatus.kt`
+- Modify: `PickerActivity.kt`, `overlay/FoldOverlayService.kt`, `ui/PreviewScreen.kt`, `scene/SceneF.kt` (pre-warm hook only), `FoldScenesApp.kt`, `AndroidManifest.xml` (only if needed)
+- Test: `app/src/test/kotlin/dev/franklyn/foldscenes/data/SceneChoiceTest.kt`, instrumented `app/src/androidTest/.../data/SceneRepositoryTest.kt`
 
 **Interfaces:**
-- Consumes: `Scenes.all`.
-- Produces: `enum class Mode { PIN, ROTATE }`, `data class Selection(val ticked: Set<String>, val mode: Mode, val pinned: String, val lastIndex: Int)`, `fun nextScene(sel: Selection): Pair<String, Selection>`.
+- Consumes: `Scenes.all`, `Scenes.byId`, `WallpaperApplier`, `SceneBitmap`, `HingeSource`.
+- Produces: `fun resolveSceneId(saved: String?): String` (pure; returns `saved` if it is the id of a scene in `Scenes.all`, else the first scene's id), `class SceneRepository(context: Context)` with `val sceneId: Flow<String>`, `suspend fun setSceneId(id: String)`, `fun currentSceneIdBlocking(): String` (DataStore preferences, key `scene_id`, always passed through `resolveSceneId`), `object ServiceStatus { fun isEnabled(context: Context): Boolean }` (reads `Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES` and checks for our component, tolerating the `:` list and either component-string form).
 
-- [ ] **Step 1: Write failing tests:**
-  - `rotate_cycles_ticked_in_order`: ticked A, C, F cycles A, C, F, A
-  - `pin_always_returns_pinned`
-  - `empty_ticked_falls_back_to_A`
-  - `single_ticked_in_rotate_returns_it`
-  - `unknown_ids_ignored`
-- [ ] **Step 2: Run.** Expected: FAIL.
-- [ ] **Step 3: Implement `nextScene`** as a pure function. Back it with `SceneRepository` on DataStore. The service calls `nextScene` once per unfold, when the angle first rises above 20 deg after being closed.
-- [ ] **Step 4: Run.** Expected: PASS.
-- [ ] **Step 5: Build the picker in Compose.** Choosing or pinning a scene calls `WallpaperApplier` for both screens (the cover opens Motorola's editor). Rotate mode: decide with Franklyn first, see spec section 8; until then Pin only.
-- [ ] **Step 5b: Build the picker in Compose** inside a `Scaffold` (fixes the inset finding from Task 1). Five scene checkboxes, the Pin and Rotate toggle, a block on unticking the last scene, a Preview button, and a service-status row that shows enabled or disabled, with a button to Accessibility settings and the adb command as help text.
-- [ ] **Step 6: Install and tick a scene in the app.** Expected: the next fold plays that scene. Verify with `logcat`.
-- [ ] **Step 7: Commit** `feat: picker with pin, rotate and service status`.
+- [ ] **Step 1: Write failing JVM tests (`SceneChoiceTest`).** `known_id_is_kept` (every id in `Scenes.all`... NOTE: `Scenes.all` builds `Paint`s in two scene constructors, so a JVM test that touches `Scenes` would hit unmocked Android classes. Take the list of valid ids as a parameter instead: `fun resolveSceneId(saved: String?, validIds: List<String>): String`; the repository passes `Scenes.all.map { it.id }`). Tests: `known_id_is_kept` (`resolveSceneId("eclipse", ids5) == "eclipse"`), `null_falls_back_to_first` (`== "sunrise"`), `unknown_falls_back_to_first`, `blank_falls_back_to_first`, `empty_valid_ids_returns_empty_string_without_crashing`. Run. Expected: FAIL (symbol not defined).
+- [ ] **Step 2: Implement `resolveSceneId` and `SceneRepository`.** Add the DataStore preferences dependency to the version catalog (latest stable compatible with Kotlin 2.4.21). Instrumented `SceneRepositoryTest` on the phone: `default_is_first_scene` (fresh DataStore name for the test, not the app's real one), `set_then_read_roundtrip`, `invalid_stored_value_resolves_to_first`. The test must use its own DataStore file and delete it afterwards. Run JVM tests, expected PASS.
+- [ ] **Step 3: Overlay uses the chosen scene.** In `FoldOverlayService`, read `SceneRepository.currentSceneIdBlocking()` once when each overlay is created (a blocking read of a tiny DataStore on the main thread at overlay creation is acceptable; it happens at most a few times per fold; say so in a comment) and set `view.scene = Scenes.byId(id)`. Also collect `sceneId` flow in a service-scoped coroutine on `Dispatchers.Main.immediate` so a change in the picker updates live overlays, cancelled in teardown.
+- [ ] **Step 4: Deferred fixes folded in (each from the ledger):**
+  - Frame loop pauses while idle: if every overlay has `alpha == 0` and the last hinge event is more than 1.5 s old, do not repost the Choreographer callback; resume when `HingeSource.lastEventNanos` changes (collect it, or poll it from a cheap `Handler.postDelayed` every 250 ms while paused, whichever is simpler and leaves no leaked callback on teardown). Review Focus 4 still holds: nothing runs after teardown.
+  - Gate the 100 ms per-overlay frame log behind `BuildConfig.DEBUG`.
+  - `SceneView.onDraw`: latch the scene off after the first thrown exception (a failing shader must not log a stack every frame): keep a `failed` flag, log once.
+  - Pre-warm Scene F's face bitmaps off the main thread at app start (`FoldScenesApp` posts the shadow-blur work to a background thread; the final bitmap assignment must be thread-safe, e.g. via a `@Volatile` field or a `lazy(SYNCHRONIZED)`), without drawing anything off main. If this cannot be done without touching the main-thread-only draw invariant, skip it and say so.
+  - Apply-button `busy` state survives rotation/folding: move it into a `ViewModel` (`PickerViewModel`), and run the apply on `viewModelScope`; the result text also lives there.
+  - Soften the `SceneRenderTest`-adjacent merge test: change the colour-distance rule from `> 40` to `> 30` (it measured ~49), and sample Rick's face at y = 35% instead of 30%.
+- [ ] **Step 5: Build `PickerScreen` in Compose** inside the existing `Scaffold`. A vertical list of the five scenes, each row a radio button with the scene name and a thumbnail: the thumbnail is the scene's p = 0.5 frame rendered at 200 px wide through `SceneBitmap` on `Dispatchers.Default` once per scene (cache the Bitmaps in the ViewModel; show a placeholder until ready). Scene names: sunrise "Sunrise", eclipse "Eclipse", mountains "Mountains", spiderverse "Spider-Verse", rickmorty "Rick and Morty". Selecting a row calls `setSceneId`; it does NOT apply wallpapers by itself. Below the list: the preview slider (existing `PreviewScreen`, now previewing the chosen scene), then three buttons: **Set inner wallpaper**, **Set cover wallpaper** and **Set both** (inner first; when it succeeds the cover editor opens; the Save tap stays with Franklyn). Each button applies the CURRENTLY chosen scene (`Scenes.byId(chosen)`), never the first. A short warning line above the buttons: "Setting the inner wallpaper replaces your current one. It is not backed up." A service status row at the top: `ServiceStatus.isEnabled` shown as "Fold animation: on / off", with a button "Open accessibility settings" (`Settings.ACTION_ACCESSIBILITY_SETTINGS`) and a one-line help text with the adb command `adb shell settings put secure enabled_accessibility_services dev.franklyn.foldscenes/dev.franklyn.foldscenes.overlay.FoldOverlayService`. Recheck the status in `onResume`.
+- [ ] **Step 6: Tests for the UI logic.** JVM test `ServiceStatusParseTest` for the pure parser `fun containsService(setting: String?, component: ComponentName-string pair)` (write it as a pure function taking Strings: `isServiceListed(setting: String?, pkg: String, cls: String): Boolean`): listed alone, listed in a `:`-separated list, listed in the short form `pkg/.overlay.FoldOverlayService`, absent, null, empty, substring-lookalike (`other.pkg/...FoldOverlayService` must be false). Run RED then GREEN.
+- [ ] **Step 7: Verify.** `assembleDebug assembleDebugAndroidTest testDebugUnitTest`, install both APKs by the proven route, run the instrument (`OK (N tests)`). Confirm the accessibility setting still lists our service. Do NOT launch the app and do NOT apply any wallpaper on the phone; the controller does that with Franklyn.
+- [ ] **Step 8: Commit** in two commits: `feat: scene choice repository and picker` and `fix: deferred overlay and apply fixes`.
 
 ### Task 10: Real-fold acceptance
 

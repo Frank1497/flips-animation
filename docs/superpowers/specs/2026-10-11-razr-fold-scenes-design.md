@@ -74,7 +74,7 @@ One Gradle module, Kotlin, minSdk 33, targetSdk 36.
 | Scenes D, F | Low-res grid scaled nearest-neighbour plus bitmap assets | Scene |
 | `FoldOverlayService` | `AccessibilityService`. Per lit display, adds one overlay window and drives it on `Choreographer`. Removes it when the display turns off | all above |
 | `SceneView` | Custom `View` in each overlay. Draws the active scene at p and alpha | Scene |
-| `PickerActivity` | Compose: tick scenes, Pin or Rotate, preview slider, Set inner wallpaper and Set cover wallpaper buttons, enable-service status and a button to the accessibility settings | SceneRepository, WallpaperApplier |
+| `PickerActivity` | Compose: choose one scene, preview slider, Set inner wallpaper and Set cover wallpaper buttons, enable-service status and a button to the accessibility settings | SceneRepository, WallpaperApplier |
 | `SceneRepository` | Ticked set, mode, last index, in DataStore | DataStore |
 
 Overlay window: `TYPE_ACCESSIBILITY_OVERLAY`, `FLAG_NOT_TOUCHABLE | FLAG_NOT_FOCUSABLE | FLAG_LAYOUT_IN_SCREEN`, `PixelFormat.TRANSLUCENT`. Created with `createDisplayContext(display).createWindowContext(TYPE_ACCESSIBILITY_OVERLAY, null)`. Proven in the probe.
@@ -91,12 +91,11 @@ The OS owns the gap, and the swap angle depends on fold speed (section 2). The m
 
 ## 8. Picker behaviour
 
-- Tick any of the five scenes. At least one must stay ticked.
-- Pin (one chosen scene) or Rotate (next ticked scene on each unfold).
+- Pick one scene. Rotate mode is dropped (Franklyn, 22:41): the cover wallpaper needs his Save tap per change, so one pinned scene keeps wallpapers and overlay matched.
 - Preview: a 0..180 slider that drives p and alpha on a panel-sized preview.
 - Set inner wallpaper: one tap, applies the scene's p = 1 frame as the inner home wallpaper. Previous wallpaper is replaced.
 - Set cover wallpaper: opens Motorola's cover editor showing the p = 0 frame. Franklyn taps Save.
-- Rotate mode conflicts with this: the cover wallpaper cannot change without a tap. Decision deferred to Task 9: Rotate changes the inner wallpaper and the overlay scene automatically and prompts for the cover tap, or Rotate is dropped.
+- Set both: inner first, then the cover editor opens; Franklyn taps Save there.
 - Service status: shows enabled or disabled, with a button to Accessibility settings and the adb command in a help line.
 
 ## 9. Risks
@@ -135,5 +134,5 @@ AGP 9.4.1, Kotlin 2.4.21, Compose BOM 2026.06.01.
 6c. Linear progress, remove calibration and swap handling, SceneBitmap, WallpaperApplier, apply buttons.
 7. Scenes B and C.
 8. Scenes D and F with assets.
-9. Picker, repository, Pin and Rotate, service status.
+9. Scene picker (one scene), repository, service status, deferred fixes.
 10. Real-fold acceptance.
