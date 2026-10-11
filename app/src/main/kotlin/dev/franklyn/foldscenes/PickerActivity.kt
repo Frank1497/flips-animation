@@ -31,6 +31,7 @@ class PickerActivity : ComponentActivity() {
             MaterialTheme {
                 val scope = rememberCoroutineScope()
                 var result by remember { mutableStateOf("") }
+                var busy by remember { mutableStateOf(false) }
                 val scene = Scenes.all.first()
                 Scaffold { innerPadding ->
                     Column(modifier = Modifier.padding(innerPadding)) {
@@ -38,24 +39,36 @@ class PickerActivity : ComponentActivity() {
                         // Weighted so the preview shrinks and the buttons stay visible below it.
                         Column(modifier = Modifier.weight(1f)) { PreviewScreen() }
                         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-                            Button(onClick = {
+                            Button(enabled = !busy, onClick = {
+                                if (busy) return@Button
+                                busy = true
                                 scope.launch {
-                                    result = "Applying inner wallpaper..."
-                                    val r = withContext(Dispatchers.Default) { WallpaperApplier.applyInner(applicationContext, scene) }
-                                    result = r.fold(
-                                        onSuccess = { "Inner wallpaper set." },
-                                        onFailure = { "Inner wallpaper failed: ${it.message}" },
-                                    )
+                                    try {
+                                        result = "Applying inner wallpaper..."
+                                        val r = withContext(Dispatchers.Default) { WallpaperApplier.applyInner(applicationContext, scene) }
+                                        result = r.fold(
+                                            onSuccess = { "Inner wallpaper set." },
+                                            onFailure = { "Inner wallpaper failed: ${it.message ?: it.javaClass.simpleName}" },
+                                        )
+                                    } finally {
+                                        busy = false
+                                    }
                                 }
                             }) { Text("Set inner wallpaper") }
-                            Button(onClick = {
+                            Button(enabled = !busy, onClick = {
+                                if (busy) return@Button
+                                busy = true
                                 scope.launch {
-                                    result = "Saving cover frame..."
-                                    val r = withContext(Dispatchers.Default) { WallpaperApplier.applyCover(applicationContext, scene) }
-                                    result = r.fold(
-                                        onSuccess = { "Cover frame saved: $it" },
-                                        onFailure = { "Cover wallpaper: ${it.message}" },
-                                    )
+                                    try {
+                                        result = "Saving cover frame..."
+                                        val r = withContext(Dispatchers.Default) { WallpaperApplier.applyCover(applicationContext, scene) }
+                                        result = r.fold(
+                                            onSuccess = { "Cover frame saved: $it" },
+                                            onFailure = { "Cover wallpaper: ${it.message ?: it.javaClass.simpleName}" },
+                                        )
+                                    } finally {
+                                        busy = false
+                                    }
                                 }
                             }) { Text("Set cover wallpaper") }
                             Text("Opens Motorola's editor. Tap Save there.", style = MaterialTheme.typography.bodySmall)
