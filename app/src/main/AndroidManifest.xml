@@ -24,6 +24,10 @@
             <meta-data
                 android:name="android.service.wallpaper"
                 android:resource="@xml/test_wallpaper" />
+            <!-- Motorola's cover-screen picker lists services carrying this tag (11 of its own do). -->
+            <meta-data
+                android:name="moto.cli.livewallpaper"
+                android:value="true" />
         </service>
     </application>
 
