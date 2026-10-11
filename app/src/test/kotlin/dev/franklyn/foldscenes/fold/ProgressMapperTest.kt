@@ -64,4 +64,28 @@ class ProgressMapperTest {
             }
         }
     }
+
+    @Test
+    fun degenerate_calibration_returns_finite() {
+        val bad = listOf(
+            Calibration(0f, 109f),
+            Calibration(56f, 180f),
+            Calibration(Float.NaN, 109f),
+            Calibration(56f, 50f),
+        )
+        for (cal in bad) {
+            for (panel in Panel.values()) {
+                for (angle in listOf(0f, 56f, 109f, 180f)) {
+                    val p = progress(panel, angle, cal)
+                    assertTrue("$cal $panel $angle -> $p", p.isFinite() && p in 0f..1f)
+                    assertEquals("$cal $panel $angle", progress(panel, angle, Calibration()), p, 0f)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun valid_calibration_is_used() {
+        assertEquals(0.5f, progress(COVER, 50f, Calibration(50f, 120f)), 0f)
+    }
 }
