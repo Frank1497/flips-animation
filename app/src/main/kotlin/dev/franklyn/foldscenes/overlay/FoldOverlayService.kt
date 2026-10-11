@@ -13,11 +13,17 @@ import android.view.Choreographer
 import android.view.Display
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
+import dev.franklyn.foldscenes.data.SceneRepository
 import dev.franklyn.foldscenes.fold.HingeSource
 import dev.franklyn.foldscenes.fold.overlayAlpha
 import dev.franklyn.foldscenes.fold.panelFor
 import dev.franklyn.foldscenes.fold.progress
 import dev.franklyn.foldscenes.scene.Scenes
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 /**
@@ -39,6 +45,8 @@ class FoldOverlayService : AccessibilityService() {
     private var displayManager: DisplayManager? = null
     private var hinge: HingeSource? = null
     private var framePosted = false
+    private var repository: SceneRepository? = null
+    private var scope: CoroutineScope? = null
 
     private val displayListener = object : DisplayManager.DisplayListener {
         override fun onDisplayAdded(displayId: Int) = sync()
@@ -61,6 +69,17 @@ class FoldOverlayService : AccessibilityService() {
         val h = HingeSource(this)
         hinge = h
         h.start()
+        val repo = SceneRepository(this)
+        repository = repo
+        // A scene picked in the app updates the live overlays. Main.immediate: views are main-thread only.
+        val sc = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+        scope = sc
+        sc.launch {
+            repo.sceneId.collect { id ->
+                val scene = Scenes.byId(id)
+                for (o in overlays.values) if (o.view.scene !== scene) o.view.scene = scene
+            }
+        }
         val dm = getSystemService(DisplayManager::class.java)
         displayManager = dm
         dm.registerDisplayListener(displayListener, Handler(Looper.getMainLooper()))
@@ -82,6 +101,9 @@ class FoldOverlayService : AccessibilityService() {
     }
 
     private fun teardown() {
+        scope?.cancel()
+        scope = null
+        repository = null
         displayManager?.unregisterDisplayListener(displayListener)
         displayManager = null
         overlays.keys.toList().forEach(::removeOverlay)
@@ -114,7 +136,9 @@ class FoldOverlayService : AccessibilityService() {
             }
         }
         val view = SceneView(wctx).apply {
-            scene = Scenes.all.first()
+            // Blocking read of a tiny DataStore on the main thread; it happens only when an overlay is
+            // created (a few times per fold), so the cost is acceptable and the first frame is the right scene.
+            scene = Scenes.byId(repository?.currentSceneIdBlocking() ?: Scenes.all.first().id)
             progress = 0f
             alpha01 = 0f
         }

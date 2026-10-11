@@ -26,6 +26,7 @@ import dev.franklyn.foldscenes.fold.Panel
 import dev.franklyn.foldscenes.fold.overlayAlpha
 import dev.franklyn.foldscenes.fold.progress
 import dev.franklyn.foldscenes.overlay.SceneView
+import dev.franklyn.foldscenes.scene.Scene
 
 private fun aspectOf(panel: Panel): Float = when (panel) {
     Panel.COVER -> 1080f / 1272f
@@ -35,7 +36,7 @@ private fun aspectOf(panel: Panel): Float = when (panel) {
 /** Slider-driven preview of the scene on a chosen panel's aspect ratio. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PreviewScreen(modifier: Modifier = Modifier) {
+fun PreviewScreen(scene: Scene, modifier: Modifier = Modifier) {
     var angle by remember { mutableFloatStateOf(90f) }
     var panel by remember { mutableStateOf(Panel.INNER) }
 
@@ -53,6 +54,7 @@ fun PreviewScreen(modifier: Modifier = Modifier) {
                 modifier = Modifier.aspectRatio(aspectOf(panel), matchHeightConstraintsFirst = false),
                 factory = { SceneView(it) },
                 update = {
+                    if (it.scene !== scene) it.scene = scene
                     it.progress = p
                     // The preview always shows the scene at full opacity so it can be seen at any angle;
                     // the real overlay fades with overlayAlpha (shown in the readout above).
