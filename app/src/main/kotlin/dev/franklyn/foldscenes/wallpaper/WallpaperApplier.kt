@@ -30,7 +30,7 @@ object WallpaperApplier {
         val bitmap = SceneBitmap.render(scene, INNER_WIDTH, INNER_HEIGHT, 1f)
         try {
             WallpaperManager.getInstance(context)
-                .setBitmap(bitmap, null, true, WallpaperManager.FLAG_SYSTEM)
+                .setBitmap(bitmap, null, true, WallpaperManager.FLAG_SYSTEM or WallpaperManager.FLAG_LOCK)
             Unit
         } finally {
             bitmap.recycle()
