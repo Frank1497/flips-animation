@@ -41,6 +41,8 @@ class SceneRenderTest {
     @Test
     fun every_scene_renders_varied_and_progress_changes_it() {
         assertTrue(Scenes.all.isNotEmpty())
+        // Scene G decodes its frames on a background thread; wait so the matrix renders the real scene.
+        Scenes.all.forEach { assertTrue("${it.id} assets not ready", it.awaitAssets(20_000)) }
         for (scene in Scenes.all) for ((w, h) in sizes) {
             val frames = ps.associateWith { p -> SceneBitmap.render(scene, w, h, p, 1f) }
             for ((p, bmp) in frames) {
@@ -54,7 +56,7 @@ class SceneRenderTest {
 
     @Test
     fun registry_lists_all_scenes_in_order() {
-        assertEquals(listOf("sunrise", "eclipse", "mountains", "spiderverse", "rickmorty"), Scenes.all.map { it.id })
+        assertEquals(listOf("sunrise", "eclipse", "mountains", "spiderverse", "rickmorty", "ronaldo"), Scenes.all.map { it.id })
     }
 
     @Test
@@ -158,6 +160,33 @@ class SceneRenderTest {
             // the 32x34 sprites only hold ~650 opaque pixels by construction; the faces hold >70k
             val min = if (name == "rick" || name == "morty") 1000 else 300
             assertTrue("$name opaque=$opaque", opaque >= min)
+        }
+    }
+
+    @Test
+    fun ronaldo_figure_is_drawn() {
+        val g = Scenes.byId("ronaldo")
+        assertEquals("ronaldo", g.id)
+        assertTrue("ronaldo assets not ready", g.awaitAssets(20_000))
+        val w = 1080; val h = 1272
+        val bmp = SceneBitmap.render(g, w, h, 0.5f, 1f)
+        val c = blockMean(bmp, w / 2, (h * 0.46f).toInt())
+        assertTrue("no blue kit at the figure centroid: ${c.toList()}", c[2] > c[0] + 25)
+    }
+
+    @Test
+    fun ronaldo_assets_decode() {
+        val am = InstrumentationRegistry.getInstrumentation().targetContext.assets
+        for (i in 0 until 37) {
+            val name = "ronaldo/f_%02d.png".format(i)
+            val b = am.open(name).use { BitmapFactory.decodeStream(it) }
+            assertTrue("$name decodes", b != null && b.width > 0 && b.height > 0)
+            assertTrue("$name width ${b.width}", b.width in 300..700)
+            val px = IntArray(b.width * b.height)
+            b.getPixels(px, 0, b.width, 0, 0, b.width, b.height)
+            val opaque = px.count { Color.alpha(it) > 0 }
+            assertTrue("$name opaque=$opaque", opaque >= 5000)
+            b.recycle()
         }
     }
 }

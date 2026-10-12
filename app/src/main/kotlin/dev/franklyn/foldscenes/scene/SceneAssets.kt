@@ -1,6 +1,7 @@
 package dev.franklyn.foldscenes.scene
 
 import android.content.Context
+import android.content.res.AssetManager
 import android.content.res.Resources
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -19,6 +20,10 @@ object SceneAssets {
     fun init(context: Context) {
         resources = context.applicationContext.resources
     }
+
+    /** The application's [AssetManager] (for scene G's frames), or null when assets are not initialised. */
+    @Synchronized
+    fun assetManager(): AssetManager? = resources?.assets
 
     /** Decoded, unscaled ARGB_8888 bitmap for [resId], or null when assets are not initialised. */
     @Synchronized

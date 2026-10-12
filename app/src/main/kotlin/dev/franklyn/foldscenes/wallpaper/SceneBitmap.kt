@@ -19,7 +19,12 @@ import java.util.concurrent.CountDownLatch
  * called from another thread the recording hops to the main looper and blocks until done.
  */
 object SceneBitmap {
+    private const val ASSET_WAIT_MS = 15_000L
+
     fun render(scene: Scene, width: Int, height: Int, p: Float, timeSeconds: Float = 0f): Bitmap {
+        // Scenes with background-decoded art (G) must have it before the frame is captured. Waiting on the
+        // main thread would deadlock the loader's hand-off, so only wait when called from another thread.
+        if (Looper.myLooper() != Looper.getMainLooper()) scene.awaitAssets(ASSET_WAIT_MS)
         val reader = ImageReader.newInstance(
             width, height, PixelFormat.RGBA_8888, 1,
             HardwareBuffer.USAGE_GPU_COLOR_OUTPUT or HardwareBuffer.USAGE_GPU_SAMPLED_IMAGE,

@@ -26,6 +26,7 @@ val SCENE_NAMES: Map<String, String> = mapOf(
     "mountains" to "Mountains",
     "spiderverse" to "Spider-Verse",
     "rickmorty" to "Rick and Morty",
+    "ronaldo" to "Ronaldo",
 )
 
 /**
