@@ -15,8 +15,9 @@ import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import dev.franklyn.foldscenes.BuildConfig
 import dev.franklyn.foldscenes.data.SceneRepository
+import dev.franklyn.foldscenes.fold.FoldGate
 import dev.franklyn.foldscenes.fold.HingeSource
-import dev.franklyn.foldscenes.fold.overlayAlpha
+import dev.franklyn.foldscenes.fold.foldAlpha
 import dev.franklyn.foldscenes.fold.panelFor
 import dev.franklyn.foldscenes.fold.progress
 import dev.franklyn.foldscenes.scene.Scenes
@@ -45,6 +46,7 @@ class FoldOverlayService : AccessibilityService() {
     private val overlays = mutableMapOf<Int, Overlay>()
     private var displayManager: DisplayManager? = null
     private var hinge: HingeSource? = null
+    private var gate = FoldGate()
     private var framePosted = false
     private var pollPosted = false
     private var pausedAtEventNanos = 0L
@@ -68,20 +70,25 @@ class FoldOverlayService : AccessibilityService() {
         }
     }
 
-    // While paused (every overlay invisible and the hinge quiet) no Choreographer callback is pending.
-    // This cheap poll notices a new hinge event within POLL_MS and restarts the frame loop.
+    // While paused (every overlay invisible and the hinge at rest) no Choreographer callback is pending.
+    // This cheap poll notices a new hinge event within POLL_MS; only real movement past the gate restarts frames.
     private val resumePoll = object : Runnable {
         override fun run() {
             pollPosted = false
             val h = hinge
             if (h == null || overlays.isEmpty()) return // torn down: do not reschedule
-            if (h.lastEventNanos.value != pausedAtEventNanos) postFrame() else schedulePoll()
+            val event = h.lastEventNanos.value
+            if (event == pausedAtEventNanos) return schedulePoll()
+            pausedAtEventNanos = event
+            gate.update(h.angle.value, 0f) // seeds the rest angle on the first event; arms nothing at rest
+            if (gate.moving || gate.wouldMove(h.angle.value)) postFrame() else schedulePoll()
         }
     }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         teardown() // a re-connect on the same instance must not leak the previous run
+        gate = FoldGate()
         val h = HingeSource(this)
         hinge = h
         h.start()
@@ -223,18 +230,19 @@ class FoldOverlayService : AccessibilityService() {
         pollPosted = false
     }
 
-    /** Updates every overlay for this frame. Returns true while frames must keep coming (something visible or the hinge recently moved). */
+    /** Updates every overlay for this frame. Returns true while frames must keep coming (something visible or a fold in progress). */
     private fun onFrame(): Boolean {
         val h = hinge ?: return false
         val angle = h.angle.value
         val lastEvent = h.lastEventNanos.value
         val idleSeconds = if (lastEvent == 0L) 0f else (SystemClock.elapsedRealtimeNanos() - lastEvent) / 1e9f
+        val moving = gate.update(angle, idleSeconds, hasEvent = lastEvent != 0L)
         val nowMs = SystemClock.uptimeMillis()
         var anyVisible = false
         for (o in overlays.values) {
             val panel = panelFor(o.displayId) ?: continue
             val p = progress(angle)
-            val alpha = overlayAlpha(panel, angle, idleSeconds)
+            val alpha = foldAlpha(panel, angle, idleSeconds, moving)
             if (abs(o.view.progress - p) > EPS) o.view.progress = p
             if (abs(o.view.alpha01 - alpha) > EPS) o.view.alpha01 = alpha
             if (alpha > 0f) {
@@ -246,9 +254,8 @@ class FoldOverlayService : AccessibilityService() {
                 }
             }
         }
-        // No event yet (lastEvent == 0) counts as quiet: the first event resumes the loop via the poll.
-        val hingeQuiet = lastEvent == 0L || idleSeconds >= PAUSE_AFTER_S
-        return anyVisible || !hingeQuiet
+        // Jitter never arms the gate, so a resting hinge pauses the loop instead of keeping it alive.
+        return anyVisible || moving
     }
 
     private companion object {
@@ -256,6 +263,5 @@ class FoldOverlayService : AccessibilityService() {
         const val EPS = 0.001f
         const val LOG_INTERVAL_MS = 100L
         const val POLL_MS = 250L
-        const val PAUSE_AFTER_S = 1.5f
     }
 }

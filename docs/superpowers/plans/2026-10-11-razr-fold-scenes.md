@@ -298,6 +298,8 @@ Depends on: Task 15 committed (same file family, sequenced to avoid two concurre
 
 ### Task 15c: Hinge trigger threshold
 
+**2026-10-26 02:35 IST, coded (`fold/FoldGate.kt`, `FoldGateTest`, `FoldOverlayService`).** Measured jitter at rest: 0 hinge events across 5 x 30 s windows with the phone untouched, OPENED at 180°. The sensor is on-change and reports whole degrees; the smallest real step while folding was 1°. Threshold = 0° jitter + 1° margin, so an angle must move more than 1° from its last resting angle before the overlay can show. The gate disarms after 1.0 s idle (the same point where `overlayAlpha` reaches 0) and takes the current angle as the new rest, so a phone left half-open stays dark. The resume poll and the frame loop no longer restart on events that stay inside the threshold. Rest verify on the device: 30 s untouched, 0 frame logs.
+
 Depends on: Task 15b committed.
 
 **Files:** `fold/OverlayAlpha.kt`, `overlay/FoldOverlayService.kt` (hinge-quiet check)
