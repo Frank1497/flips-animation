@@ -158,15 +158,20 @@ class FoldOverlayService : AccessibilityService() {
             progress = 0f
             alpha01 = 0f
         }
+        // NO_LIMITS + cutout ALWAYS: draw under the status bar and the camera cutout. The window stays
+        // NOT_TOUCHABLE | NOT_FOCUSABLE, so it only extends where the scene paints; system UI stays on top.
         val lp = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT,
-        )
+        ).apply {
+            layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+        }
         val wm = wctx.getSystemService(WindowManager::class.java)
         try {
             wm.addView(view, lp)
