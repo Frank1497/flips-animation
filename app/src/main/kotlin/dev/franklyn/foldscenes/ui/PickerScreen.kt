@@ -38,9 +38,13 @@ private const val ADB_HELP =
     "adb shell settings put secure enabled_accessibility_services " +
         "dev.franklyn.foldscenes/dev.franklyn.foldscenes.overlay.FoldOverlayService"
 
+private const val DECLINED_NOTE =
+    "You declined the Accessibility API disclosure, so the fold animation stays off. " +
+        "To turn it on later, open Android Settings > Accessibility > Razr Fold Scenes and switch it on."
+
 /** The one-scene picker: service status, scene list, preview, and the three apply buttons. */
 @Composable
-fun PickerScreen(viewModel: PickerViewModel, serviceEnabled: Boolean) {
+fun PickerScreen(viewModel: PickerViewModel, serviceEnabled: Boolean, disclosureAccepted: Boolean) {
     val context = LocalContext.current
     val chosen by viewModel.chosenId.collectAsStateWithLifecycle()
     val thumbs by viewModel.thumbnails.collectAsStateWithLifecycle()
@@ -61,10 +65,14 @@ fun PickerScreen(viewModel: PickerViewModel, serviceEnabled: Boolean) {
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(top = 12.dp),
             )
-            OutlinedButton(onClick = {
-                context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-            }) { Text("Open accessibility settings") }
-            Text(ADB_HELP, style = MaterialTheme.typography.bodySmall)
+            if (disclosureAccepted) {
+                OutlinedButton(onClick = {
+                    context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                }) { Text("Open accessibility settings") }
+                Text(ADB_HELP, style = MaterialTheme.typography.bodySmall)
+            } else if (!serviceEnabled) {
+                Text(DECLINED_NOTE, style = MaterialTheme.typography.bodyMedium)
+            }
 
             Text("Scene", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 16.dp))
             for (id in SCENE_NAMES.keys) {

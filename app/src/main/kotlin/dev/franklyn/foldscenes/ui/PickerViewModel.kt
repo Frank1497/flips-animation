@@ -4,6 +4,7 @@ import android.app.Application
 import android.graphics.Bitmap
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import dev.franklyn.foldscenes.data.ConsentRepository
 import dev.franklyn.foldscenes.data.SceneRepository
 import dev.franklyn.foldscenes.scene.Scenes
 import dev.franklyn.foldscenes.wallpaper.SceneBitmap
@@ -35,6 +36,15 @@ val SCENE_NAMES: Map<String, String> = mapOf(
  */
 class PickerViewModel(app: Application) : AndroidViewModel(app) {
     private val repository = SceneRepository(app)
+    private val consent = ConsentRepository(app)
+
+    /** Accessibility disclosure choice: null until the user taps Accept or Decline. */
+    val disclosureChoice: StateFlow<Boolean?> = consent.accessibilityDisclosure
+        .stateIn(viewModelScope, SharingStarted.Eagerly, consent.accessibilityDisclosureBlocking())
+
+    fun recordDisclosure(accepted: Boolean) {
+        viewModelScope.launch { consent.setAccessibilityDisclosure(accepted) }
+    }
 
     // Initial value from a one-off blocking read of the tiny DataStore, so the radio never flashes the wrong row.
     val chosenId: StateFlow<String> = repository.sceneId

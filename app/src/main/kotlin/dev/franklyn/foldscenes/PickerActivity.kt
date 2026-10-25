@@ -6,6 +6,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.franklyn.foldscenes.ui.AccessibilityDisclosureScreen
+import dev.franklyn.foldscenes.ui.shouldShowAccessibilityDisclosure
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import dev.franklyn.foldscenes.ui.PickerScreen
@@ -20,7 +23,15 @@ class PickerActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme {
-                PickerScreen(viewModel, serviceEnabled)
+                val choice by viewModel.disclosureChoice.collectAsStateWithLifecycle()
+                if (shouldShowAccessibilityDisclosure(choice)) {
+                    AccessibilityDisclosureScreen(
+                        onAccept = { viewModel.recordDisclosure(true) },
+                        onDecline = { viewModel.recordDisclosure(false) },
+                    )
+                } else {
+                    PickerScreen(viewModel, serviceEnabled, disclosureAccepted = choice == true)
+                }
             }
         }
     }
