@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="app_name">Flip\'s Animation</string>
     <string name="fold_service_label">Razr Fold Scenes</string>
     <string name="fold_accessibility_description">Plays a scene over the screen while the phone folds or unfolds. It never reads or captures screen content.</string>
 </resources>
