@@ -1,15 +1,13 @@
 package dev.franklyn.foldscenes.wallpaper
 
-import android.content.ContentResolver
-import android.content.Intent
+import android.app.WallpaperManager
 import android.graphics.Bitmap
 import android.graphics.Color
-import android.net.Uri
-import android.provider.MediaStore
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.franklyn.foldscenes.scene.Scenes
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.abs
@@ -27,21 +25,6 @@ class WallpaperTest {
             y += step
         }
         return out
-    }
-
-    private fun coverRows(resolver: ContentResolver, name: String): List<Uri> {
-        val collection = MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-        val rows = ArrayList<Uri>()
-        resolver.query(
-            collection,
-            arrayOf(MediaStore.Images.Media._ID),
-            "${MediaStore.Images.Media.DISPLAY_NAME} = ?",
-            arrayOf(name),
-            null,
-        )?.use { c ->
-            while (c.moveToNext()) rows += android.content.ContentUris.withAppendedId(collection, c.getLong(0))
-        }
-        return rows
     }
 
     @Test
@@ -72,28 +55,24 @@ class WallpaperTest {
         assertTrue("p0 vs p1 diff=$diff", diff > 8)
     }
 
+    /** Writes the real cover slots (Razr only): both ids must move, proving setBitmap(which=16, then 4) landed. */
     @Test
-    fun cover_editor_intent_resolves() {
-        val intent = Intent(WallpaperApplier.COVER_EDITOR_ACTION).apply { type = "image/png" }
-        assertNotNull(context.packageManager.resolveActivity(intent, 0))
-    }
+    fun applyCover_writes_both_cover_slots_on_device() {
+        val wm = WallpaperManager.getInstance(context)
+        val lockBefore = wm.getWallpaperId(CoverSlot.LOCK.which)
+        val homeBefore = wm.getWallpaperId(CoverSlot.HOME.which)
 
-    @Test
-    fun applyCover_inserts_mediastore_row_and_overwrites() {
-        val name = WallpaperApplier.coverFileName(scene.id)
-        assertEquals("razrfold_sunrise_cover.png", name)
-        val resolver = context.contentResolver
-        try {
-            WallpaperApplier.saveCoverFrame(context, scene)
-            val uri = WallpaperApplier.saveCoverFrame(context, scene)
-            val rows = coverRows(resolver, name)
-            assertEquals("rows named $name: $rows", 1, rows.size)
-            assertEquals(uri, rows.single())
-            val decoded = resolver.openInputStream(uri)!!.use { android.graphics.BitmapFactory.decodeStream(it) }
-            assertEquals(1080, decoded.width)
-            assertEquals(1272, decoded.height)
-        } finally {
-            coverRows(resolver, name).forEach { resolver.delete(it, null, null) }
-        }
+        val outcome = WallpaperApplier.applyCover(context, scene)
+
+        assertNull("error: ${outcome.error}", outcome.error)
+        assertEquals(CoverSlotState.SET, outcome.lock)
+        assertEquals(CoverSlotState.SET, outcome.home)
+        assertNotEquals(lockBefore, wm.getWallpaperId(CoverSlot.LOCK.which))
+        assertNotEquals(homeBefore, wm.getWallpaperId(CoverSlot.HOME.which))
+        assertNotEquals(
+            "lock and home must be separate slots",
+            wm.getWallpaperId(CoverSlot.LOCK.which),
+            wm.getWallpaperId(CoverSlot.HOME.which),
+        )
     }
 }

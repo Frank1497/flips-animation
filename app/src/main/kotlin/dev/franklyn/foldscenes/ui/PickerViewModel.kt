@@ -2,18 +2,23 @@ package dev.franklyn.foldscenes.ui
 
 import android.app.Application
 import android.graphics.Bitmap
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import dev.franklyn.foldscenes.data.ConsentRepository
 import dev.franklyn.foldscenes.data.SceneRepository
 import dev.franklyn.foldscenes.scene.Scenes
+import dev.franklyn.foldscenes.wallpaper.CoverSlotState
 import dev.franklyn.foldscenes.wallpaper.SceneBitmap
 import dev.franklyn.foldscenes.wallpaper.WallpaperApplier
+import dev.franklyn.foldscenes.wallpaper.coverResultText
+import dev.franklyn.foldscenes.wallpaper.coverStatusText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -59,6 +64,15 @@ class PickerViewModel(app: Application) : AndroidViewModel(app) {
     private val _result = MutableStateFlow("")
     val result: StateFlow<String> = _result.asStateFlow()
 
+    private val _inner = MutableStateFlow("")
+    private val _lock = MutableStateFlow(CoverSlotState.IDLE)
+    private val _home = MutableStateFlow(CoverSlotState.IDLE)
+
+    /** Real per-slot state, e.g. "Cover: lock + home both set | Inner: applied". */
+    val status: StateFlow<String> = combine(_lock, _home, _inner) { lock, home, inner ->
+        listOf(coverStatusText(lock, home), inner).filter { it.isNotEmpty() }.joinToString(" | ")
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, "")
+
     init {
         viewModelScope.launch(Dispatchers.Default) {
             val h = (THUMB_WIDTH * 1272f / 1080f).roundToInt()
@@ -79,7 +93,7 @@ class PickerViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setCover() = apply(inner = false, cover = true)
 
-    /** Inner first; the cover editor opens only when the inner wallpaper succeeded. */
+    /** Inner first; the cover is written only when the inner wallpaper succeeded. */
     fun setBoth() = apply(inner = true, cover = true)
 
     private fun apply(inner: Boolean, cover: Boolean) {
@@ -90,22 +104,23 @@ class PickerViewModel(app: Application) : AndroidViewModel(app) {
             try {
                 if (inner) {
                     _result.value = "Applying inner wallpaper..."
-                    val r = withContext(Dispatchers.Default) { WallpaperApplier.applyInner(ctx, scene) }
-                    val failure = r.exceptionOrNull()
+                    val failure = withContext(Dispatchers.Default) { WallpaperApplier.applyInner(ctx, scene) }
+                        .exceptionOrNull()
                     if (failure != null) {
+                        _inner.value = "Inner: failed"
                         _result.value = "Inner wallpaper failed: ${failure.message ?: failure.javaClass.simpleName}"
                         return@launch
                     }
+                    _inner.value = "Inner: applied"
                     _result.value = "Inner wallpaper set."
                 }
                 if (cover) {
-                    _result.value = if (inner) "Inner wallpaper set. Saving cover frame..." else "Saving cover frame..."
-                    val r = withContext(Dispatchers.Default) { WallpaperApplier.applyCover(ctx, scene) }
-                    val prefix = if (inner) "Inner wallpaper set. " else ""
-                    _result.value = r.fold(
-                        onSuccess = { "${prefix}Cover frame saved: $it. Tap Save in Motorola's editor." },
-                        onFailure = { "${prefix}Cover wallpaper: ${it.message ?: it.javaClass.simpleName}" },
-                    )
+                    _result.value = "Applying cover wallpaper..."
+                    val outcome = withContext(Dispatchers.Default) { WallpaperApplier.applyCover(ctx, scene) }
+                    Log.i(TAG, "cover scene=${scene.id} $outcome")
+                    _lock.value = outcome.lock
+                    _home.value = outcome.home
+                    _result.value = coverResultText(outcome)
                 }
             } finally {
                 _busy.value = false
@@ -115,5 +130,6 @@ class PickerViewModel(app: Application) : AndroidViewModel(app) {
 
     private companion object {
         const val THUMB_WIDTH = 200
+        const val TAG = "FoldScenesCover"
     }
 }

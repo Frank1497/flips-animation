@@ -6,14 +6,14 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.getValue
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import dev.franklyn.foldscenes.ui.AccessibilityDisclosureScreen
-import dev.franklyn.foldscenes.ui.shouldShowAccessibilityDisclosure
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.franklyn.foldscenes.ui.AccessibilityDisclosureScreen
 import dev.franklyn.foldscenes.ui.PickerScreen
 import dev.franklyn.foldscenes.ui.PickerViewModel
 import dev.franklyn.foldscenes.ui.ServiceStatus
+import dev.franklyn.foldscenes.ui.shouldShowAccessibilityDisclosure
 
 class PickerActivity : ComponentActivity() {
     private val viewModel: PickerViewModel by viewModels()

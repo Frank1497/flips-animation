@@ -50,6 +50,7 @@ fun PickerScreen(viewModel: PickerViewModel, serviceEnabled: Boolean, disclosure
     val thumbs by viewModel.thumbnails.collectAsStateWithLifecycle()
     val busy by viewModel.busy.collectAsStateWithLifecycle()
     val result by viewModel.result.collectAsStateWithLifecycle()
+    val status by viewModel.status.collectAsStateWithLifecycle()
 
     Scaffold { innerPadding ->
         Column(
@@ -114,7 +115,7 @@ fun PickerScreen(viewModel: PickerViewModel, serviceEnabled: Boolean, disclosure
             )
 
             Text(
-                "Setting the inner wallpaper replaces your current one. It is not backed up.",
+                "Setting a wallpaper replaces your current one on that screen. It is not backed up.",
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
             )
@@ -129,12 +130,10 @@ fun PickerScreen(viewModel: PickerViewModel, serviceEnabled: Boolean, disclosure
                     Text("Set both")
                 }
             }
-            Text(
-                "The cover wallpaper opens Motorola's editor. Tap Save there.",
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-            if (result.isNotEmpty()) Text(result, modifier = Modifier.padding(top = 8.dp))
+            if (status.isNotEmpty()) {
+                Text(status, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 8.dp))
+            }
+            if (result.isNotEmpty()) Text(result, modifier = Modifier.padding(top = 4.dp))
         }
     }
 }

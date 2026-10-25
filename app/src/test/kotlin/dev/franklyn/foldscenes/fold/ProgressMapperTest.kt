@@ -1,6 +1,5 @@
 package dev.franklyn.foldscenes.fold
 
-import dev.franklyn.foldscenes.wallpaper.WallpaperApplier
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -44,12 +43,5 @@ class ProgressMapperTest {
             val p = progress(angle)
             assertTrue("$angle -> $p", p in 0f..1f)
         }
-    }
-
-    @Test
-    fun coverFileName_is_stable_and_safe() {
-        assertEquals("razrfold_sunrise_cover.png", WallpaperApplier.coverFileName("sunrise"))
-        val unsafe = WallpaperApplier.coverFileName("../we ird/id:1")
-        assertTrue(unsafe, Regex("razrfold_[A-Za-z0-9_]+_cover\\.png").matches(unsafe))
     }
 }

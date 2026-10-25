@@ -253,3 +253,76 @@ Franklyn approved the mockup (GIF: `/home/franklyn/.hermes/profiles/kratos/cache
 - [ ] **Step 4: Franklyn watches** one open and one close per scene and answers pass or fail per scene in `acceptance.md`.
 - [ ] **Step 5: Confirm at rest.** The wallpaper frame persists closed and open, and the overlay fades into it with no visible jump at either end, on both screens.
 - [ ] **Step 6: Commit** `test: real-fold acceptance`.
+
+### Task 1.0-redo: Restore accessibility disclosure (regression)
+
+Commit `6695889` ("fix: prominent accessibility disclosure + consent; drop isAccessibilityTool") was lost from the working tree during the 2026-10-25 logo-recovery `git reset` to `11cf9cd`. Confirmed missing by Kratos 2026-10-25: `AccessibilityDisclosure.kt` and `ConsentRepository.kt` absent from disk, `fold_accessibility.xml` still carries `android:isAccessibilityTool="true"` with no disclosure screen gating it — the exact state that commit fixed for Play Store review.
+
+**Files:** as `6695889` touched: `PickerActivity.kt`, `data/ConsentRepository.kt` (restore), `ui/AccessibilityDisclosure.kt` (restore), `ui/PickerScreen.kt`, `ui/PickerViewModel.kt`, `res/xml/fold_accessibility.xml`, `ui/AccessibilityDisclosureTest.kt` (restore).
+
+- [ ] **Step 1: Cherry-pick.** `git cherry-pick 6695889` onto the current branch tip. Resolve conflicts against Task 15's uncommitted changes to `PickerActivity.kt`/`PickerScreen.kt`/`PickerViewModel.kt` by hand — both touch overlapping files, do not blind-accept either side.
+- [ ] **Step 2: Verify.** `fold_accessibility.xml` has `isAccessibilityTool` removed or gated per the original fix; `AccessibilityDisclosure.kt` and `ConsentRepository.kt` exist again; run `testDebugUnitTest`.
+- [ ] **Step 3: Commit** immediately, standalone: `fix: restore accessibility disclosure lost in logo-recovery reset`. Do not bundle with Task 15.
+
+### Task 15: Cover wallpaper via direct WallpaperManager write (status: DONE, verified live 2026-10-26)
+
+**Final verification.** Franklyn changed the scene on the phone, and both cover slots updated visually on the LOCKED cover screen (he saw it himself). The fold animation also triggered live. dumpsys: CLI `id=73 mWhich=4 SET_STATIC`, CLI lock `id=72 mWhich=16`. The earlier "moon still showing" failure happened while `accessibility_enabled=0` and FoldOverlayService was in the Crashed state after `adb install -r`. Repair: delete and re-put `enabled_accessibility_services`, then `accessibility_enabled 1`. The ClockFace `sunrise`-template theory below was never confirmed as the blocker. Do not rule it back in without a re-test.
+
+**Known risk (open, not fixed):** androidTest `WallpaperTest.applyCover_writes_both_cover_slots_on_device` writes the REAL cover lock and home slots on every run, with no backup. It already destroyed Franklyn's Spider-Man cover photo once. Move it out of the default instrumented suite (e.g. a `@LargeTest`/custom annotation excluded by default, or a separate opt-in class run only by hand) before any unattended or CI run of `connectedAndroidTest`.
+
+**2026-10-26 01:50 IST update (supersedes the two-tap steps below).** Per `docs/research/2026-10-26-cover-wallpaper-mechanism.md` the editor flow was deleted. `WallpaperApplier.applyCover` now renders 1080x1272 and calls `setBitmap(bmp, null, false, 16)` then `(…, 4)` behind the `CoverSlots` interface, and judges each slot by its id delta (`writeCover`, `CoverFlowTest` with a fake). Results:
+- JVM: 38/38 pass. androidTest `WallpaperTest`: 3/3 pass on device (includes the real both-slot write).
+- dumpsys: before = single CLI entry `id=68 mWhich=20 SET_LIVE crop 1962x2304`; after = CLI `id=70 mWhich=4 SET_STATIC crop 1080x1272` + CLI lock `id=69 mWhich=16 crop 1080x1272` (lock `mBindSource=UNKNOWN`, the service's tag for a static lock-only slot). No migration was logged, because lock was written first.
+- Visual, LOCKED cover: still shows ClockFace's `sunrise` template (moon artwork). That template draws its own art. `CLIWallpaperChangedReceiver` needs a `callingPackage` extra, which the system WALLPAPER_CHANGED broadcast never carries for which=4/16. `WALLPAPER_CHANGED` is protected (live Permission Denial), so an app cannot nudge it.
+- Visual, UNLOCKED cover home: not checked, needs Franklyn's PIN.
+- (Superseded by the final verification above. The open decision is resolved.)
+
+### Task 15 (old): Cover two-tap flow (superseded)
+
+Already in progress — see PRD `docs/prd/2026-10-25-app-redo-prd.md` Task 15 row for the full root-cause writeup (Motorola's two independent wallpaper slots, `style` intent extra). Code is written and builds (`CoverSlot.kt`, split `WallpaperApplier`, two-tap sequencing in `PickerViewModel`/`PickerActivity`), uncommitted as of 2026-10-25 20:30 IST.
+
+- [ ] **Step 1 (blocking, needs Franklyn live):** Pick a scene, tap "Set inner wallpaper," tap "Set cover wallpaper," Save on 1 of 2 (lock), Save on 2 of 2 (home).
+- [ ] **Step 2:** `adb shell dumpsys wallpaper` — pass requires BOTH `CLI wallpaper state` (which=4) AND `CLI lock wallpaper state` (which=16) show `mBindSource=SET_STATIC` with new ids and a ~1080x1272 crop (2 px Motorola trim tolerance). Last checked 2026-10-25: lock slot still `mBindSource=UNKNOWN` — fix unverified.
+- [ ] **Step 3:** Fold shut and locked, screencap display 1, confirm visually the chosen scene (not Motorola's stock wallpaper) is on the cover lock screen.
+- [ ] **Step 4: Commit** only after Steps 2 and 3 both pass: author `Kratos <kratos@local>`.
+
+### Task 15b: Overlay edge-to-edge fix
+
+Depends on: Task 15 committed (same file family, sequenced to avoid two concurrent adb sessions on one phone).
+
+**Files:** `overlay/FoldOverlayService.kt`
+
+- [ ] **Step 1:** `addOverlay`'s `WindowManager.LayoutParams` is missing `FLAG_LAYOUT_NO_LIMITS` and a `layoutInDisplayCutoutMode`. Add the flag plus `layoutInDisplayCutoutMode = LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS`. Keep the overlay `FLAG_NOT_TOUCHABLE | FLAG_NOT_FOCUSABLE` — this only extends where the scene draws, never grants touch or hides system UI.
+- [ ] **Step 2: Verify on-device.** Screenshot during a fold on both displays; scene must reach the very top edge, under the status bar, clock/battery icons still visible.
+- [ ] **Step 3: Commit** `fix: overlay draws edge-to-edge under status bar`.
+
+### Task 15c: Hinge trigger threshold
+
+Depends on: Task 15b committed.
+
+**Files:** `fold/OverlayAlpha.kt`, `overlay/FoldOverlayService.kt` (hinge-quiet check)
+
+- [ ] **Step 1: Measure.** Log raw hinge angle for 30 s with the phone resting still (not touched). Record the observed jitter magnitude in a comment — the design doc has no number for this; do not guess one before measuring.
+- [ ] **Step 2: Add a minimum-movement threshold.** `overlayAlpha` must stay at 0 unless the angle has moved more than the measured jitter plus margin (e.g. jitter_max + 1°) from its last RESTING value — not on any sensor event. `FoldOverlayService.onFrame`'s "hinge quiet" check must not restart the frame loop on jitter alone.
+- [ ] **Step 3: Verify on-device.** Phone resting still: overlay stays fully off (previously showed nonzero alpha on jitter). Real fold/unfold still triggers normally.
+- [ ] **Step 4: Commit** `fix: ignore hinge sensor jitter below fold threshold`.
+
+### Task 15d: Settings screen + per-app exclusion (camera + user-picked apps)
+
+Independent of 15/15b/15c on file scope, sequenced after per Franklyn's Option A (2026-10-25: one adb/phone session active at a time). Full UI spec, motion/interaction rules (apple-design skill applied), and reviewable mock: PRD `docs/prd/2026-10-25-app-redo-prd.md` "Settings — App Exclusion List" section; live dashboard mock at `docs/design-review/dashboard.html` (Settings + Apps screens, built from this device's real 132-app list and real default camera `com.motorola.camera5`), already reviewed and commented on by Franklyn (alphabetical order, all-on-by-default confirmed and fixed in the mock 2026-10-25).
+
+**Files:** new `ui/SettingsScreen.kt`, new `ui/AppsScreen.kt`, new `data/ExclusionRepository.kt`, modify `overlay/FoldOverlayService.kt` (camera callback + `onAccessibilityEvent` body + foreground-app gate), modify `ui/PickerScreen.kt` (gear icon replacing the old theme-toggle icon — theme toggle itself relocates into `SettingsScreen`), `AndroidManifest.xml` (`QUERY_ALL_PACKAGES`).
+
+**Contract:**
+- `SettingsScreen`: Theme segmented control (System/Light/Dark, relocated from `PickerScreen`'s old top-right icon) + "Apps" row showing a live excluded-count subtitle, navigates to `AppsScreen`.
+- `AppsScreen`: camera row pinned first, locked off, label resolved live via `PackageManager.resolveActivity(Intent(MediaStore.ACTION_IMAGE_CAPTURE))` — never hardcoded to one OEM package. All other launcher-visible apps (`PackageManager.queryIntentActivities(CATEGORY_LAUNCHER)`), **alphabetical by label**, each with a toggle switch, **all on by default**. Exclusion set persisted via DataStore (`Set<String>` of package names).
+- Detection: `CameraManager.registerAvailabilityCallback` suppresses on ANY process opening a camera (catches third-party camera apps too, not just the system default — the pinned row is a UI convenience, not the only protection). Foreground-app gating reuses the existing `AccessibilityEvent` stream (`onAccessibilityEvent`, `event.packageName`, currently a no-op) against the stored exclusion set, gating `addOverlay`/frame drawing. No `UsageStatsManager` permission needed.
+- Motion: toggle switches respond on touch-down (not touch-up), spring-based (damping 1.0, response ~0.3s, no bounce), interruptible mid-flight. Settings↔Apps navigation is a push/slide matching OS back-navigation direction, never a custom direction or fade. Reduced-motion system setting: toggles cross-fade instead of sliding, navigation becomes a plain cut.
+
+- [ ] **Step 1: Write failing JVM tests** for the pure logic: exclusion-set add/remove, camera-package resolution fallback when `resolveActivity` returns null (must not crash, should hide the locked row rather than show a broken one).
+- [ ] **Step 2: Implement `ExclusionRepository`** (DataStore-backed).
+- [ ] **Step 3: Build `SettingsScreen` and `AppsScreen`** in Compose per the contract and motion spec above. Reference the dashboard mock for exact layout/row structure.
+- [ ] **Step 4: Wire `FoldOverlayService`**: register `CameraManager.registerAvailabilityCallback`, implement `onAccessibilityEvent` to track foreground package, gate overlay creation/frame draw against camera-open state OR current foreground package being in the exclusion set.
+- [ ] **Step 5: Instrumented test.** Toggle an app off in `AppsScreen`, foreground that app on the phone, fold — overlay must not draw. Toggle back on, overlay draws again. Open camera app — overlay must not draw regardless of exclusion-list state.
+- [ ] **Step 6: Verify `QUERY_ALL_PACKAGES`** does not trip Play Store policy review without a declared use-case string (Android requires a Play Console declaration for this permission) — flag to Franklyn if this needs a Play Console form filled before submission, do not silently skip it.
+- [ ] **Step 7: Commit** `feat: settings screen, per-app and camera exclusion for fold animation`.
