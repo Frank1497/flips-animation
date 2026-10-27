@@ -21,8 +21,15 @@ rows at both panel sizes:
 - Eclipse
 - Mountains
 - Spider-Verse
-- Rick and Morty (crease-split face)
+- Rick and Morty (crease-split face, splits cleanly on the hinge as the phone opens)
 - Ronaldo (bicycle kick over purple Matrix rain)
+
+<p align="center">
+  <img src="docs/media/rickmorty-scene.gif" alt="Rick and Morty scene animating across the fold" width="260">
+</p>
+
+<sub>Real render output from the Rick and Morty scene at five fold progress
+points (closed → open → closed), inner-display resolution. Not a mockup.</sub>
 
 **Wallpapers that match the animation.** Picking a scene also sets:
 - the inner home + lock wallpaper to the scene's fully-open frame
@@ -37,6 +44,12 @@ off for specific apps (e.g. don't play over a banking app or a video call), and
 the system camera is suppressed automatically, detected via
 `CameraManager.registerAvailabilityCallback` — not a hardcoded package allowlist,
 so it also catches third-party camera apps.
+
+By default, the animation does **not** play while any camera is active — this
+is automatic and not user-togglable, shown locked in the Apps screen. For every
+other app, the animation plays by default and only stops for apps the user
+explicitly excludes in Settings → Apps; nothing is excluded unless the user
+turns it off.
 
 **System-synced theme.** Light/dark mode matches the phone's system setting on
 first launch, with a manual override (System / Light / Dark) in Settings.
