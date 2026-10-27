@@ -17,6 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -30,6 +31,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.franklyn.foldscenes.scene.Scenes
@@ -44,7 +47,12 @@ private const val DECLINED_NOTE =
 
 /** The one-scene picker: service status, scene list, preview, and the three apply buttons. */
 @Composable
-fun PickerScreen(viewModel: PickerViewModel, serviceEnabled: Boolean, disclosureAccepted: Boolean) {
+fun PickerScreen(
+    viewModel: PickerViewModel,
+    serviceEnabled: Boolean,
+    disclosureAccepted: Boolean,
+    onOpenSettings: () -> Unit,
+) {
     val context = LocalContext.current
     val chosen by viewModel.chosenId.collectAsStateWithLifecycle()
     val thumbs by viewModel.thumbnails.collectAsStateWithLifecycle()
@@ -59,7 +67,12 @@ fun PickerScreen(viewModel: PickerViewModel, serviceEnabled: Boolean, disclosure
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 8.dp),
         ) {
-            Text("Razr Fold Scenes", style = MaterialTheme.typography.titleLarge)
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Text("Razr Fold Scenes", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                IconButton(onClick = onOpenSettings, modifier = Modifier.semantics { contentDescription = "Settings" }) {
+                    Text("\u2699", style = MaterialTheme.typography.headlineSmall)
+                }
+            }
 
             Text(
                 "Fold animation: ${if (serviceEnabled) "on" else "off"}",

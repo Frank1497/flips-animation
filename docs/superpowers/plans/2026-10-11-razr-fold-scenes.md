@@ -311,6 +311,13 @@ Depends on: Task 15b committed.
 
 ### Task 15d: Settings screen + per-app exclusion (camera + user-picked apps)
 
+**2026-10-26: coded, built, JVM-tested. UNVERIFIED on the device** (no adb access while Franklyn is away). Franklyn installs `app/build/outputs/apk/debug/app-debug.apk` by hand and reports back. Implementation notes:
+- Foreground is tracked per display from `TYPE_WINDOW_STATE_CHANGED` (`event.displayId`), and suppression applies if ANY lit display's last app is excluded. Reason: folding shut hands the cover to its launcher while the inner display still "holds" the excluded app.
+- The per-app decision is latched at fold start (`SuppressionLatch`), so the cover launcher taking focus mid-fold cannot un-suppress it. An open camera (`CameraManager` availability, any process) suppresses live with no latch.
+- The default camera package (resolved via `ACTION_IMAGE_CAPTURE`) also suppresses while in the foreground. If resolution fails, or only the chooser ("android") resolves, the locked row is hidden.
+- `QUERY_ALL_PACKAGES` is in the manifest. Play Console use-case declaration is still REQUIRED before any Store submission (Step 6, open).
+- Motion values need on-device tuning: switch spring (response 0.3 s, no bounce), drag touch slop, row press scale 0.97, push slide (exit offset 1/3 width).
+
 Independent of 15/15b/15c on file scope, sequenced after per Franklyn's Option A (2026-10-25: one adb/phone session active at a time). Full UI spec, motion/interaction rules (apple-design skill applied), and reviewable mock: PRD `docs/prd/2026-10-25-app-redo-prd.md` "Settings — App Exclusion List" section; live dashboard mock at `docs/design-review/dashboard.html` (Settings + Apps screens, built from this device's real 132-app list and real default camera `com.motorola.camera5`), already reviewed and commented on by Franklyn (alphabetical order, all-on-by-default confirmed and fixed in the mock 2026-10-25).
 
 **Files:** new `ui/SettingsScreen.kt`, new `ui/AppsScreen.kt`, new `data/ExclusionRepository.kt`, modify `overlay/FoldOverlayService.kt` (camera callback + `onAccessibilityEvent` body + foreground-app gate), modify `ui/PickerScreen.kt` (gear icon replacing the old theme-toggle icon — theme toggle itself relocates into `SettingsScreen`), `AndroidManifest.xml` (`QUERY_ALL_PACKAGES`).
