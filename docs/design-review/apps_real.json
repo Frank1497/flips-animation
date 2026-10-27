@@ -1,0 +1,530 @@
+[
+  {
+    "package": "app.moadly.twa",
+    "label": "Twa"
+  },
+  {
+    "package": "app.xandar.motokeyplus",
+    "label": "Motokeyplus"
+  },
+  {
+    "package": "com.amazon.avod.thirdpartyclient",
+    "label": "Thirdpartyclient"
+  },
+  {
+    "package": "com.android.chrome",
+    "label": "Chrome"
+  },
+  {
+    "package": "com.android.dialer",
+    "label": "Dialer"
+  },
+  {
+    "package": "com.android.settings",
+    "label": "Settings"
+  },
+  {
+    "package": "com.android.vending",
+    "label": "Vending"
+  },
+  {
+    "package": "com.anthropic.claude",
+    "label": "Claude"
+  },
+  {
+    "package": "com.application.zomato",
+    "label": "Zomato"
+  },
+  {
+    "package": "com.application.zomato.district",
+    "label": "District"
+  },
+  {
+    "package": "com.axis.mobile",
+    "label": "Mobile"
+  },
+  {
+    "package": "com.azure.authenticator",
+    "label": "Authenticator"
+  },
+  {
+    "package": "com.bigbasket.mobileapp",
+    "label": "Mobileapp"
+  },
+  {
+    "package": "com.bose.bosemusic",
+    "label": "Bosemusic"
+  },
+  {
+    "package": "com.bt.bms",
+    "label": "Bms"
+  },
+  {
+    "package": "com.canarabank.mobility",
+    "label": "Mobility"
+  },
+  {
+    "package": "com.carriez.flutter_hbb",
+    "label": "Flutter Hbb"
+  },
+  {
+    "package": "com.connect.enduser",
+    "label": "Enduser"
+  },
+  {
+    "package": "com.cpplusworld.ezykamp",
+    "label": "Ezykamp"
+  },
+  {
+    "package": "com.csam.icici.bank.imobile",
+    "label": "Imobile"
+  },
+  {
+    "package": "com.digilocker.android",
+    "label": "Digilocker"
+  },
+  {
+    "package": "com.discord",
+    "label": "Discord"
+  },
+  {
+    "package": "com.dreamplug.androidapp",
+    "label": "Androidapp"
+  },
+  {
+    "package": "com.duolingo",
+    "label": "Duolingo"
+  },
+  {
+    "package": "com.fsn.nds",
+    "label": "Nds"
+  },
+  {
+    "package": "com.ge.capital.konysbiapp",
+    "label": "Konysbiapp"
+  },
+  {
+    "package": "com.getpaz.pazcare",
+    "label": "Pazcare"
+  },
+  {
+    "package": "com.google.android.apps.adm",
+    "label": "Adm"
+  },
+  {
+    "package": "com.google.android.apps.authenticator2",
+    "label": "Authenticator2"
+  },
+  {
+    "package": "com.google.android.apps.bard",
+    "label": "Bard"
+  },
+  {
+    "package": "com.google.android.apps.chromecast.app",
+    "label": "Chromecast"
+  },
+  {
+    "package": "com.google.android.apps.docs",
+    "label": "Docs"
+  },
+  {
+    "package": "com.google.android.apps.docs.editors.sheets",
+    "label": "Sheets"
+  },
+  {
+    "package": "com.google.android.apps.magazines",
+    "label": "Magazines"
+  },
+  {
+    "package": "com.google.android.apps.maps",
+    "label": "Maps"
+  },
+  {
+    "package": "com.google.android.apps.messaging",
+    "label": "Messaging"
+  },
+  {
+    "package": "com.google.android.apps.nbu.files",
+    "label": "Files"
+  },
+  {
+    "package": "com.google.android.apps.nbu.paisa.user",
+    "label": "User"
+  },
+  {
+    "package": "com.google.android.apps.photos",
+    "label": "Photos"
+  },
+  {
+    "package": "com.google.android.apps.subscriptions.red",
+    "label": "Red"
+  },
+  {
+    "package": "com.google.android.apps.tachyon",
+    "label": "Tachyon"
+  },
+  {
+    "package": "com.google.android.apps.tasks",
+    "label": "Tasks"
+  },
+  {
+    "package": "com.google.android.apps.walletnfcrel",
+    "label": "Walletnfcrel"
+  },
+  {
+    "package": "com.google.android.apps.youtube.music",
+    "label": "Music"
+  },
+  {
+    "package": "com.google.android.calculator",
+    "label": "Calculator"
+  },
+  {
+    "package": "com.google.android.calendar",
+    "label": "Calendar"
+  },
+  {
+    "package": "com.google.android.contacts",
+    "label": "Contacts"
+  },
+  {
+    "package": "com.google.android.deskclock",
+    "label": "Deskclock"
+  },
+  {
+    "package": "com.google.android.gm",
+    "label": "Gm"
+  },
+  {
+    "package": "com.google.android.googlequicksearchbox",
+    "label": "Googlequicksearchbox"
+  },
+  {
+    "package": "com.google.android.videos",
+    "label": "Videos"
+  },
+  {
+    "package": "com.google.android.youtube",
+    "label": "Youtube"
+  },
+  {
+    "package": "com.google.audio.hearing.visualization.accessibility.scribe",
+    "label": "Scribe"
+  },
+  {
+    "package": "com.grofers.customerapp",
+    "label": "Customerapp"
+  },
+  {
+    "package": "com.hg.titp2",
+    "label": "Titp2"
+  },
+  {
+    "package": "com.idle.cinema.empire.sim.tycoon",
+    "label": "Tycoon"
+  },
+  {
+    "package": "com.innersloth.spacemafia",
+    "label": "Spacemafia"
+  },
+  {
+    "package": "com.instagram.android",
+    "label": "Instagram"
+  },
+  {
+    "package": "com.jio.myjio",
+    "label": "Myjio"
+  },
+  {
+    "package": "com.keka.xhr",
+    "label": "Xhr"
+  },
+  {
+    "package": "com.linkedin.android",
+    "label": "Linkedin"
+  },
+  {
+    "package": "com.microsoft.appmanager",
+    "label": "Appmanager"
+  },
+  {
+    "package": "com.microsoft.office.officehubrow",
+    "label": "Officehubrow"
+  },
+  {
+    "package": "com.microsoft.office.outlook",
+    "label": "Outlook"
+  },
+  {
+    "package": "com.microsoft.teams",
+    "label": "Teams"
+  },
+  {
+    "package": "com.mmrda",
+    "label": "Mmrda"
+  },
+  {
+    "package": "com.mobilefootie.wc2010",
+    "label": "Wc2010"
+  },
+  {
+    "package": "com.mobond.mindicator",
+    "label": "Mindicator"
+  },
+  {
+    "package": "com.motorola.audiorecorder",
+    "label": "Audiorecorder"
+  },
+  {
+    "package": "com.motorola.camera5",
+    "label": "Camera5"
+  },
+  {
+    "package": "com.motorola.ccc.notification",
+    "label": "Notification"
+  },
+  {
+    "package": "com.motorola.cn.calculator",
+    "label": "Calculator"
+  },
+  {
+    "package": "com.motorola.dolby.dolbyui",
+    "label": "Dolbyui"
+  },
+  {
+    "package": "com.motorola.gamehub",
+    "label": "Gamehub"
+  },
+  {
+    "package": "com.motorola.gamemode",
+    "label": "Gamemode"
+  },
+  {
+    "package": "com.motorola.genie",
+    "label": "Genie"
+  },
+  {
+    "package": "com.motorola.help",
+    "label": "Help"
+  },
+  {
+    "package": "com.motorola.journal",
+    "label": "Journal"
+  },
+  {
+    "package": "com.motorola.livewallpaper3",
+    "label": "Livewallpaper3"
+  },
+  {
+    "package": "com.motorola.mobiledesktop",
+    "label": "Mobiledesktop"
+  },
+  {
+    "package": "com.motorola.moto",
+    "label": "Moto"
+  },
+  {
+    "package": "com.motorola.motomigrate",
+    "label": "Motomigrate"
+  },
+  {
+    "package": "com.motorola.om",
+    "label": "Om"
+  },
+  {
+    "package": "com.motorola.play",
+    "label": "Play"
+  },
+  {
+    "package": "com.motorola.securityhub",
+    "label": "Securityhub"
+  },
+  {
+    "package": "com.motorola.spaces",
+    "label": "Spaces"
+  },
+  {
+    "package": "com.motorola.timeweatherwidget",
+    "label": "Timeweatherwidget"
+  },
+  {
+    "package": "com.motorola.uxcore",
+    "label": "Uxcore"
+  },
+  {
+    "package": "com.myairtelapp",
+    "label": "Myairtelapp"
+  },
+  {
+    "package": "com.myntra.android",
+    "label": "Myntra"
+  },
+  {
+    "package": "com.natfirst.truthin",
+    "label": "Truthin"
+  },
+  {
+    "package": "com.netflix.mediaclient",
+    "label": "Mediaclient"
+  },
+  {
+    "package": "com.nike.india",
+    "label": "India"
+  },
+  {
+    "package": "com.overlook.android.fing",
+    "label": "Fing"
+  },
+  {
+    "package": "com.playstation.remoteplay",
+    "label": "Remoteplay"
+  },
+  {
+    "package": "com.rapido.passenger",
+    "label": "Passenger"
+  },
+  {
+    "package": "com.reddit.frontpage",
+    "label": "Frontpage"
+  },
+  {
+    "package": "com.Relmtech.RemotePaid",
+    "label": "Remotepaid"
+  },
+  {
+    "package": "com.ril.ajio",
+    "label": "Ajio"
+  },
+  {
+    "package": "com.rubygames.assassin",
+    "label": "Assassin"
+  },
+  {
+    "package": "com.scee.psxandroid",
+    "label": "Psxandroid"
+  },
+  {
+    "package": "com.sonyliv",
+    "label": "Sonyliv"
+  },
+  {
+    "package": "com.spotify.music",
+    "label": "Music"
+  },
+  {
+    "package": "com.tech.idotmatrix",
+    "label": "Idotmatrix"
+  },
+  {
+    "package": "com.teegloyalty.timezone",
+    "label": "Timezone"
+  },
+  {
+    "package": "com.telehealthcircle.nayantram.uat",
+    "label": "Uat"
+  },
+  {
+    "package": "com.termux",
+    "label": "Termux"
+  },
+  {
+    "package": "com.termux.api",
+    "label": "Api"
+  },
+  {
+    "package": "com.titan.eyecare",
+    "label": "Eyecare"
+  },
+  {
+    "package": "com.toralabs.apkextractor",
+    "label": "Apkextractor"
+  },
+  {
+    "package": "com.trimbox.app",
+    "label": "Trimbox"
+  },
+  {
+    "package": "com.tuya.smart",
+    "label": "Smart"
+  },
+  {
+    "package": "com.ubercab.uberlite",
+    "label": "Uberlite"
+  },
+  {
+    "package": "com.urbanclap.urbanclap",
+    "label": "Urbanclap"
+  },
+  {
+    "package": "com.valvesoftware.android.steam.community",
+    "label": "Community"
+  },
+  {
+    "package": "com.whatsapp",
+    "label": "Whatsapp"
+  },
+  {
+    "package": "com.whereismytrain.android",
+    "label": "Whereismytrain"
+  },
+  {
+    "package": "com.wifirouter.wifispyscanner.spyscanner.whousemywifi",
+    "label": "Whousemywifi"
+  },
+  {
+    "package": "com.wizconnected.wiz2",
+    "label": "Wiz2"
+  },
+  {
+    "package": "com.xiaomi.smarthome",
+    "label": "Smarthome"
+  },
+  {
+    "package": "com.zeptoconsumerapp",
+    "label": "Zeptoconsumerapp"
+  },
+  {
+    "package": "co.shopney.snitch",
+    "label": "Snitch"
+  },
+  {
+    "package": "dev.franklyn.foldscenes",
+    "label": "Foldscenes"
+  },
+  {
+    "package": "in.amazon.mShop.android.shopping",
+    "label": "Shopping"
+  },
+  {
+    "package": "in.startv.hotstar",
+    "label": "Hotstar"
+  },
+  {
+    "package": "io.homeassistant.companion.android",
+    "label": "Companion"
+  },
+  {
+    "package": "net.one97.paytm",
+    "label": "Paytm"
+  },
+  {
+    "package": "org.cris.aikyam",
+    "label": "Aikyam"
+  },
+  {
+    "package": "org.digiyatra.org",
+    "label": "Digiyatra"
+  },
+  {
+    "package": "org.telegram.messenger",
+    "label": "Messenger"
+  },
+  {
+    "package": "org.videolan.vlc",
+    "label": "Vlc"
+  },
+  {
+    "package": "wipro.com",
+    "label": "Wipro"
+  }
+]

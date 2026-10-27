@@ -1,0 +1,17 @@
+[
+  {
+    "target": "Scene preview surface (light)",
+    "text": "Dont like the purple color and orange color make it similar to the logos colour",
+    "ts": 1792938983504
+  },
+  {
+    "target": "App title (dark)",
+    "text": "make the dark and light theme defaulted to what the  phone is running on and also add an icon in top right to change the theme",
+    "ts": 1792939049021
+  },
+  {
+    "target": "Camera row \u2014 locked, always off (light)",
+    "text": "for both dark and light the camera should work with any device installed i the system, as well as the instlalled apps on the system it should be dynamic based on the device it is instlled in",
+    "ts": 1792940700735
+  }
+]

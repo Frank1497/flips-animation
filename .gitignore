@@ -4,3 +4,11 @@ build/
 *.iml
 local.properties
 .idea/
+
+# Vendor APKs pulled for reverse-engineering research, not app code
+*.apk
+
+# Tool/agent skill config dirs, not project code
+.agents/
+.claude/
+skills-lock.json

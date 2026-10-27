@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Flip's Animation — Design Review</title>
+<style>
+  :root {
+    --l-bg:#FAFAF7; --l-surface:#FFFFFF; --l-onbg:#1A1A1A; --l-onsurface:#2A2A2A;
+    --l-primary:#D82424; --l-onprimary:#FFFFFF; --l-secondary:#FCCC18; --l-onsecondary:#1A1200;
+    --l-accent:#78B4CC; --l-border:#E2DFD8; --l-success:#2E7D32; --l-error:#9C1818;
+    --d-bg:#101010; --d-surface:#1C1C1C; --d-onbg:#EDEDED; --d-onsurface:#DADADA;
+    --d-primary:#E43024; --d-onprimary:#FFFFFF; --d-secondary:#FCD818; --d-onsecondary:#1A1200;
+    --d-accent:#8FC4DA; --d-border:#2E2E2E; --d-success:#66BB6A; --d-error:#EF5350;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, 'Inter', 'Segoe UI', Roboto, sans-serif;
+    background: #0d0d10; color: #eaeaea;
+  }
+  header {
+    padding: 24px 32px; border-bottom: 1px solid #232327;
+    display: flex; align-items: center; gap: 16px; position: sticky; top: 0;
+    background: #0d0d10; z-index: 50;
+  }
+  header img { width: 48px; height: 48px; border-radius: 10px; }
+  header h1 { font-size: 20px; margin: 0; }
+  header p { margin: 2px 0 0; font-size: 13px; color: #9a9a9f; }
+  .toolbar { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+  .pill {
+    font-size: 12px; padding: 6px 12px; border-radius: 999px; background: #1c1c20;
+    color: #c9c9ce; border: 1px solid #2a2a30;
+  }
+  button.export {
+    background: #E8963C; color: #1A1200; border: none; border-radius: 8px;
+    padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  button.export:hover { background: #f2a954; }
+
+  main { padding: 32px; max-width: 1700px; margin: 0 auto; }
+  .section-title { font-size: 15px; font-weight: 700; color: #b9b9c0; text-transform: uppercase; letter-spacing: .06em; margin: 40px 0 16px; }
+  .row { display: flex; gap: 40px; flex-wrap: wrap; align-items: flex-start; }
+
+  /* Logo review block */
+  .logo-block { display:flex; gap: 32px; align-items: center; flex-wrap: wrap; }
+  .logo-card { background:#18181c; border:1px solid #242428; border-radius:14px; padding:20px; text-align:center; }
+  .logo-card img { display:block; margin: 0 auto 10px; border-radius: 12px; background: #000; }
+  .logo-card .cap { font-size: 12px; color: #9a9a9f; }
+
+  /* Phone frame */
+  .phone {
+    position: relative; width: 306px; height: 748px; border-radius: 36px;
+    overflow: hidden; box-shadow: 0 0 0 8px #000, 0 20px 50px rgba(0,0,0,.6);
+    cursor: crosshair; user-select: none;
+  }
+  .screen { position: relative; width: 100%; height: 100%; }
+  .statusbar { height: 14px; display:flex; align-items:center; justify-content:space-between; padding: 0 10px; font-size: 8px; }
+  .app-title { font-weight: 800; font-size: 15px; padding: 10px 12px 0; }
+  .status-row { margin: 10px 12px 0; border-radius: 8px; padding: 10px 12px; font-size: 9px; font-weight: 600; }
+  .preview { margin: 10px 12px 0; border-radius: 10px; padding: 10px 12px; }
+  .preview .label { font-size: 9px; font-weight: 700; margin-bottom: 6px; }
+  .scene-surface { border-radius: 8px; height: 60px; margin-bottom: 8px; }
+  .slider-track { height: 3px; border-radius: 2px; position: relative; margin: 4px 2px; }
+  .slider-thumb { width: 10px; height: 10px; border-radius: 50%; position: absolute; top: -3.5px; left: 48%; }
+  .scenes-label { font-size: 9px; font-weight: 700; margin: 10px 12px 4px; }
+  .scene-row { margin: 0 12px 4px; border-radius: 7px; padding: 6px 8px; display:flex; align-items:center; gap: 8px; font-size: 8px; font-weight: 600; }
+  .scene-thumb { width: 24px; height: 24px; border-radius: 5px; flex-shrink: 0; }
+  .btn { margin: 6px 12px 0; border-radius: 8px; padding: 9px; text-align:center; font-size: 9px; font-weight: 700; }
+  .result-row { margin: 8px 12px 0; border-radius: 7px; padding: 7px 10px; font-size: 7.5px; font-weight: 600; }
+
+  /* Settings & Apps screens */
+  .settings-row { margin: 0 12px 6px; border-radius: 9px; padding: 12px; display:flex; align-items:center; justify-content:space-between; }
+  .settings-row .title { font-size: 10px; font-weight: 700; }
+  .settings-row .subtitle { font-size: 7.5px; opacity: .7; margin-top: 2px; }
+  .segmented { display:flex; border-radius: 6px; overflow:hidden; font-size: 7px; font-weight: 700; }
+  .segmented span { padding: 5px 8px; }
+  .toggle-switch { width: 30px; height: 17px; border-radius: 10px; position: relative; flex-shrink:0; }
+  .toggle-switch .thumb { width: 13px; height: 13px; border-radius: 50%; background:#fff; position:absolute; top: 2px; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+  .app-row { margin: 0 12px 4px; border-radius: 8px; padding: 8px 10px; display:flex; align-items:center; gap: 8px; font-size: 8px; font-weight: 600; }
+  .app-icon { width: 22px; height: 22px; border-radius: 6px; flex-shrink:0; }
+  .lock-glyph { font-size: 10px; opacity: .6; }
+  .back-chevron { font-size: 12px; margin-right: 6px; cursor: pointer; }
+
+  /* Comment pins */
+  .pin {
+    position: absolute; width: 20px; height: 20px; border-radius: 50% 50% 50% 0;
+    background: #E8963C; transform: rotate(-45deg); border: 2px solid #fff;
+    display:flex; align-items:center; justify-content:center; font-size: 10px;
+    font-weight: 800; color:#1A1200; z-index: 20; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,.4);
+  }
+  .pin span { transform: rotate(45deg); }
+
+  .caption { text-align:center; margin-top:12px; font-size: 13px; font-weight:700; color:#dcdce0; }
+
+  /* Comment panel */
+  #comment-panel {
+    position: fixed; right: 0; top: 0; height: 100vh; width: 380px;
+    background: #141418; border-left: 1px solid #27272c; z-index: 100;
+    display: flex; flex-direction: column; box-shadow: -10px 0 30px rgba(0,0,0,.4);
+  }
+  #comment-panel h2 { font-size: 15px; padding: 18px 18px 10px; margin:0; border-bottom: 1px solid #24242a; }
+  #comment-list { flex: 1; overflow-y: auto; padding: 12px 18px; }
+  .comment-item { background:#1c1c22; border-radius:10px; padding:12px; margin-bottom:10px; font-size:13px; }
+  .comment-item .meta { font-size: 11px; color: #8d8d95; margin-top: 6px; }
+  .comment-item .target { font-size: 11px; color: #E8963C; font-weight: 700; margin-bottom: 4px; }
+  #comment-form { padding: 14px 18px; border-top: 1px solid #24242a; }
+  #comment-form textarea {
+    width: 100%; min-height: 70px; background:#0f0f12; border:1px solid #2a2a30; border-radius:8px;
+    color:#eaeaea; padding: 10px; font-size: 13px; resize: vertical; font-family: inherit;
+  }
+  #comment-form .target-label { font-size: 12px; color: #9a9a9f; margin-bottom: 8px; }
+  #comment-form button {
+    margin-top: 8px; width: 100%; background:#E8963C; color:#1A1200; border:none;
+    border-radius: 8px; padding: 10px; font-weight: 700; cursor: pointer; font-size: 13px;
+  }
+  #comment-form button:disabled { background: #444; color: #888; cursor: not-allowed; }
+  #empty-state { color: #6e6e76; font-size: 13px; padding: 20px 0; text-align:center; }
+</style>
+</head>
+<body>
+
+<header>
+  <img src="assets/fsf_icon.png" alt="logo">
+  <div>
+    <h1>Flip's Animation — Design Review</h1>
+    <p>Click any element on a mock to drop a comment pin. Comments save to comments.json.</p>
+  </div>
+  <div class="toolbar">
+    <span class="pill" id="count-pill">0 comments</span>
+    <button class="export" onclick="exportComments()">Export JSON</button>
+  </div>
+</header>
+
+<main>
+  <div class="section-title">App Identity</div>
+  <div class="logo-block" id="logo-block">
+    <div class="logo-card" data-target="Logo: full FSF badge">
+      <img src="assets/fsf_full_badge.png" style="width:180px;height:180px;object-fit:contain;">
+      <div class="cap">Full FSF badge (source)</div>
+    </div>
+    <div class="logo-card" data-target="Logo: cropped launcher icon">
+      <img src="assets/ic_launcher_foreground.png" style="width:140px;height:140px;object-fit:contain;background:#101010;">
+      <div class="cap">Adaptive icon foreground<br>(432×432, text-free crop)</div>
+    </div>
+    <div class="logo-card" data-target="App name">
+      <div style="font-size:28px;font-weight:800;padding:20px 30px;">Flip's Animation</div>
+      <div class="cap">App name</div>
+    </div>
+  </div>
+
+  <div class="section-title">PickerScreen — Light &amp; Dark</div>
+  <div class="row">
+    <div>
+      <div class="phone" id="phone-light" data-theme="light"></div>
+      <div class="caption">Light mode</div>
+    </div>
+    <div>
+      <div class="phone" id="phone-dark" data-theme="dark"></div>
+      <div class="caption">Dark mode</div>
+    </div>
+  </div>
+
+  <div class="section-title">Settings — gear icon from PickerScreen</div>
+  <div class="row">
+    <div>
+      <div class="phone" id="settings-light" data-theme="light"></div>
+      <div class="caption">Settings (light)</div>
+    </div>
+    <div>
+      <div class="phone" id="settings-dark" data-theme="dark"></div>
+      <div class="caption">Settings (dark)</div>
+    </div>
+  </div>
+
+  <div class="section-title">Apps — per-app exclusion, camera locked by default</div>
+  <div class="row">
+    <div>
+      <div class="phone" id="apps-light" data-theme="light"></div>
+      <div class="caption">Apps (light)</div>
+    </div>
+    <div>
+      <div class="phone" id="apps-dark" data-theme="dark"></div>
+      <div class="caption">Apps (dark)</div>
+    </div>
+  </div>
+</main>
+
+<div id="comment-panel">
+  <h2>Comments</h2>
+  <div id="comment-list"><div id="empty-state">No comments yet. Click an element to start.</div></div>
+  <div id="comment-form">
+    <div class="target-label" id="target-label">Click an element on a mock first</div>
+    <textarea id="comment-text" placeholder="What needs to change here?" disabled></textarea>
+    <button id="submit-btn" onclick="submitComment()" disabled>Add comment</button>
+  </div>
+</div>
+
+<script>
+const API = 'http://127.0.0.1:8731/api/comments';
+let selectedTarget = null;
+let pinCounter = 0;
+
+function theme(mode) {
+  const p = (k) => `var(--${mode==='light'?'l':'d'}-${k})`;
+  return {
+    bg: p('bg'), surface: p('surface'), onbg: p('onbg'), onsurface: p('onsurface'),
+    primary: p('primary'), onprimary: p('onprimary'), secondary: p('secondary'),
+    onsecondary: p('onsecondary'), accent: p('accent'), border: p('border'), success: p('success'), error: p('error')
+  };
+}
+
+const scenes = ['Sunrise (A)','Eclipse ring (B)','Mountains (C)','Spider-Verse (D)','Rick and Morty (F)','Ronaldo (G)','Can-can'];
+
+function buildPicker(container, mode) {
+  const t = theme(mode);
+  container.style.background = t.bg;
+  container.innerHTML = `
+    <div class="screen" style="background:${t.bg};color:${t.onbg};">
+      <div class="statusbar" style="background:${t.bg};color:${t.onbg};" data-target="Status bar icons (${mode})">
+        <span>9:41</span><span>●●● 100%</span>
+      </div>
+      <div class="app-title" style="color:${t.onbg};display:flex;align-items:center;justify-content:space-between;" data-target="App title (${mode})">
+        <span>Flip's Animation</span>
+        <span class="settings-gear" style="font-size:14px;cursor:pointer;" data-target="Settings gear icon — top right (${mode})">\u2699\ufe0f</span>
+      </div>
+      <div class="status-row" style="background:${t.surface};color:${t.onsurface};" data-target="Service status row (${mode})">
+        Fold animation: on &nbsp;|&nbsp; Accessibility settings
+      </div>
+      <div class="preview" style="background:${t.surface};" data-target="Preview block (${mode})">
+        <div class="label" style="color:${t.onsurface};">Preview &nbsp; [ Cover | Inner ]</div>
+        <div class="scene-surface" style="background:${t.accent};" data-target="Scene preview surface (${mode})"></div>
+        <div class="slider-track" style="background:${t.border};" data-target="Preview slider (${mode})">
+          <div class="slider-thumb" style="background:${t.primary};"></div>
+        </div>
+      </div>
+      <div class="scenes-label" style="color:${t.onbg};" data-target="Scenes section label (${mode})">Scenes</div>
+      ${scenes.map((s,i) => `
+        <div class="scene-row" style="background:${i===0?t.primary:t.surface};color:${i===0?t.onprimary:t.onsurface};" data-target="Scene row: ${s} (${mode})">
+          <div class="scene-thumb" style="background:${t.secondary};"></div>${s}
+        </div>`).join('')}
+      <div class="btn" style="background:${t.primary};color:${t.onprimary};" data-target="Button: Set inner wallpaper (${mode})">Set inner wallpaper</div>
+      <div class="btn" style="background:${t.primary};color:${t.onprimary};" data-target="Button: Set cover wallpaper — 2 taps (${mode})">Set cover wallpaper (2 taps: lock + home)</div>
+      <div class="btn" style="background:${t.secondary};color:${t.onsecondary};" data-target="Button: Set both (${mode})">Set both</div>
+      <div class="result-row" style="background:${t.surface};color:${t.success};" data-target="Apply-result status row (${mode})">
+        Cover: lock + home both set &nbsp;|&nbsp; Inner: applied
+      </div>
+    </div>
+  `;
+}
+
+buildPicker(document.getElementById('phone-light'), 'light');
+buildPicker(document.getElementById('phone-dark'), 'dark');
+
+function buildSettings(container, mode) {
+  const t = theme(mode);
+  container.style.background = t.bg;
+  container.innerHTML = `
+    <div class="screen" style="background:${t.bg};color:${t.onbg};">
+      <div class="statusbar" style="background:${t.bg};color:${t.onbg};" data-target="Status bar icons (${mode})">
+        <span>9:41</span><span>●●● 100%</span>
+      </div>
+      <div class="app-title" style="color:${t.onbg};" data-target="Settings title (${mode})">
+        <span class="back-chevron">\u2039</span>Settings
+      </div>
+      <div class="settings-row" style="background:${t.surface};color:${t.onsurface};margin-top:14px;" data-target="Theme setting row (${mode})">
+        <div class="title">Theme</div>
+        <div class="segmented" style="background:${t.bg};">
+          <span style="background:${t.primary};color:${t.onprimary};">System</span>
+          <span>Light</span><span>Dark</span>
+        </div>
+      </div>
+      <div class="settings-row" style="background:${t.surface};color:${t.onsurface};cursor:pointer;" data-target="Apps setting row — navigates to Apps screen (${mode})">
+        <div>
+          <div class="title">Apps</div>
+          <div class="subtitle">2 apps excluded</div>
+        </div>
+        <span style="font-size:11px;">\u203a</span>
+      </div>
+    </div>
+  `;
+}
+
+async function buildApps(container, mode) {
+  const t = theme(mode);
+  let apps = [];
+  try {
+    const res = await fetch('assets/apps_real.json');
+    apps = await res.json();
+  } catch (e) {
+    apps = [{package:'(load failed)', label:'Could not load real device app list'}];
+  }
+  const cameraPkg = 'com.motorola.camera5';
+  const otherApps = apps.filter(a => a.package !== cameraPkg).sort((a,b) => a.label.localeCompare(b.label));
+  const shown = otherApps;
+  container.style.background = t.bg;
+  container.innerHTML = `
+    <div class="screen" style="background:${t.bg};color:${t.onbg};overflow-y:auto;">
+      <div class="statusbar" style="background:${t.bg};color:${t.onbg};" data-target="Status bar icons (${mode})">
+        <span>9:41</span><span>●●● 100%</span>
+      </div>
+      <div class="app-title" style="color:${t.onbg};font-size:13px;" data-target="Apps title (${mode})">
+        <span class="back-chevron">\u2039</span>Apps
+      </div>
+      <div style="margin:4px 12px 2px;font-size:8px;opacity:.75;" data-target="Apps screen explainer (${mode})">Choose which apps never show the fold animation.</div>
+      <div style="margin:0 12px 10px;font-size:6.5px;opacity:.5;" data-target="Apps source note (${mode})">Live from this device: ${apps.length} apps, pulled via PackageManager (shown: ${shown.length})</div>
+      <div class="app-row" style="background:${t.surface};color:${t.onsurface};" data-target="Camera row — locked, always off (${mode})">
+        <div class="app-icon" style="background:${t.accent};"></div>
+        <div style="flex:1;">Camera (${cameraPkg})</div>
+        <span class="lock-glyph">\ud83d\udd12</span>
+        <span style="font-size:7px;opacity:.6;">Always off</span>
+      </div>
+      ${shown.map((a,i) => `
+        <div class="app-row" style="background:${t.surface};color:${t.onsurface};" data-target="App row: ${a.label} — ${a.package} (${mode})">
+          <div class="app-icon" style="background:${t.secondary};"></div>
+          <div style="flex:1;">${a.label}</div>
+          <div class="toggle-switch" style="background:${t.primary};">
+            <div class="thumb" style="left:15px;"></div>
+          </div>
+        </div>`).join('')}
+    </div>
+  `;
+}
+
+buildSettings(document.getElementById('settings-light'), 'light');
+buildSettings(document.getElementById('settings-dark'), 'dark');
+buildApps(document.getElementById('apps-light'), 'light');
+buildApps(document.getElementById('apps-dark'), 'dark');
+
+// Click-to-comment on any [data-target] element
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-target]');
+  if (!el) return;
+  e.stopPropagation();
+  selectTarget(el, e);
+});
+
+function selectTarget(el, evt) {
+  selectedTarget = el.dataset.target;
+  document.getElementById('target-label').textContent = 'Commenting on: ' + selectedTarget;
+  const ta = document.getElementById('comment-text');
+  const btn = document.getElementById('submit-btn');
+  ta.disabled = false; btn.disabled = false; ta.focus();
+
+  // Drop a visual pin if inside a phone frame
+  const phone = el.closest('.phone');
+  if (phone) {
+    const rect = phone.getBoundingClientRect();
+    const pin = document.createElement('div');
+    pin.className = 'pin';
+    pin.style.left = (evt.clientX - rect.left - 10) + 'px';
+    pin.style.top = (evt.clientY - rect.top - 18) + 'px';
+    pinCounter++;
+    pin.innerHTML = '<span>' + pinCounter + '</span>';
+    pin.title = selectedTarget;
+    phone.appendChild(pin);
+  }
+}
+
+async function loadComments() {
+  try {
+    const res = await fetch(API);
+    const data = await res.json();
+    renderComments(data);
+  } catch (e) {
+    document.getElementById('empty-state').textContent = 'Server not running — see terminal for the start command.';
+  }
+}
+
+function renderComments(data) {
+  const list = document.getElementById('comment-list');
+  document.getElementById('count-pill').textContent = data.length + ' comment' + (data.length===1?'':'s');
+  if (!data.length) {
+    list.innerHTML = '<div id="empty-state">No comments yet. Click an element to start.</div>';
+    return;
+  }
+  list.innerHTML = data.slice().reverse().map(c => `
+    <div class="comment-item">
+      <div class="target">${c.target}</div>
+      <div>${c.text.replace(/</g,'&lt;')}</div>
+      <div class="meta">${new Date(c.ts).toLocaleString()}</div>
+    </div>
+  `).join('');
+}
+
+async function submitComment() {
+  const text = document.getElementById('comment-text').value.trim();
+  if (!text || !selectedTarget) return;
+  const body = { target: selectedTarget, text, ts: Date.now() };
+  await fetch(API, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  document.getElementById('comment-text').value = '';
+  loadComments();
+}
+
+async function exportComments() {
+  const res = await fetch(API);
+  const data = await res.json();
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'flip-animation-review-comments.json';
+  a.click();
+}
+
+loadComments();
+</script>
+</body>
+</html>
