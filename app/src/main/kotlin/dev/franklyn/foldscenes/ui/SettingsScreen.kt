@@ -29,6 +29,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.franklyn.foldscenes.data.ThemeMode
+import dev.franklyn.foldscenes.fold.SuppressionDiagnostics
+import dev.franklyn.foldscenes.fold.SuppressionSnapshot
+import dev.franklyn.foldscenes.fold.diagnosticsLines
 
 private val THEME_LABELS = listOf(ThemeMode.SYSTEM to "System", ThemeMode.LIGHT to "Light", ThemeMode.DARK to "Dark")
 
@@ -48,6 +51,7 @@ fun ScreenHeader(title: String, onBack: () -> Unit) {
 fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onOpenApps: () -> Unit) {
     val mode by viewModel.themeMode.collectAsStateWithLifecycle()
     val summary by viewModel.summary.collectAsStateWithLifecycle()
+    val diagnostics by SuppressionDiagnostics.state.collectAsStateWithLifecycle()
 
     Scaffold { innerPadding ->
         Column(
@@ -83,7 +87,21 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onOpenApps:
                     Text("\u203A", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
+            DiagnosticsCard(diagnostics)
             Spacer(Modifier.size(8.dp))
+        }
+    }
+}
+
+/** What the fold service currently sees, so a failed exclusion can be diagnosed on the phone without adb. */
+@Composable
+private fun DiagnosticsCard(snapshot: SuppressionSnapshot) {
+    SettingsCard {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text("Diagnostics", style = MaterialTheme.typography.labelLarge)
+            diagnosticsLines(snapshot).forEach {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 }

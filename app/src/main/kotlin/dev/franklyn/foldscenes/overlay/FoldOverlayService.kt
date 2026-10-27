@@ -1,8 +1,10 @@
 package dev.franklyn.foldscenes.overlay
 
 import android.accessibilityservice.AccessibilityService
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.PixelFormat
 import android.hardware.camera2.CameraManager
 import android.hardware.display.DisplayManager
@@ -19,19 +21,24 @@ import dev.franklyn.foldscenes.data.ExclusionRepository
 import dev.franklyn.foldscenes.data.InstalledApps
 import dev.franklyn.foldscenes.data.SceneRepository
 import dev.franklyn.foldscenes.fold.FoldGate
+import dev.franklyn.foldscenes.fold.FoldSuppression
+import dev.franklyn.foldscenes.fold.ForegroundTracker
 import dev.franklyn.foldscenes.fold.HingeSource
-import dev.franklyn.foldscenes.fold.SuppressionLatch
-import dev.franklyn.foldscenes.fold.anyAppSuppressed
+import dev.franklyn.foldscenes.fold.SuppressionDiagnostics
+import dev.franklyn.foldscenes.fold.SuppressionSnapshot
 import dev.franklyn.foldscenes.fold.foldAlpha
-import dev.franklyn.foldscenes.fold.overlaySuppressed
+import dev.franklyn.foldscenes.fold.foldDecisionText
 import dev.franklyn.foldscenes.fold.panelFor
 import dev.franklyn.foldscenes.fold.progress
+import dev.franklyn.foldscenes.fold.shouldSuppressOverlay
 import dev.franklyn.foldscenes.scene.Scenes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import java.time.LocalTime
+import java.time.temporal.ChronoUnit
 import kotlin.math.abs
 
 /**
@@ -60,22 +67,30 @@ class FoldOverlayService : AccessibilityService() {
     private var repository: SceneRepository? = null
     private var scope: CoroutineScope? = null
 
-    // Suppression state, main thread only. foreground: last app per display, from TYPE_WINDOW_STATE_CHANGED.
-    private val foreground = mutableMapOf<Int, String>()
+    // Suppression state, main thread only. foreground: the real Activity per display (see ForegroundTracker).
+    private val foreground = ForegroundTracker(ownPackage = BuildConfig.APPLICATION_ID) { pkg, cls -> isActivity(pkg, cls) }
     private val camerasInUse = mutableSetOf<String>()
     private var excluded: Set<String> = emptySet()
     private var cameraPackage: String? = null
     private var cameraManager: CameraManager? = null
-    private val latch = SuppressionLatch()
+    private var foldSuppression = FoldSuppression()
+    private var lastFold: String? = null
 
-    // Fires for ANY process opening a camera (third-party camera apps included); needs no permission.
+    // Fires for ANY process opening a PUBLIC camera ID; needs no permission. Camera IDs the HAL marks
+    // system-only or hidden are never reported to a non-system listener (CameraService
+    // shouldSkipStatusUpdates), which is why the foreground default-camera check also exists.
     private val cameraCallback = object : CameraManager.AvailabilityCallback() {
         override fun onCameraUnavailable(cameraId: String) {
             camerasInUse += cameraId
+            Log.i(TAG, "camera $cameraId in use (open: $camerasInUse)")
+            publish()
         }
 
         override fun onCameraAvailable(cameraId: String) {
-            camerasInUse -= cameraId
+            if (camerasInUse.remove(cameraId)) {
+                Log.i(TAG, "camera $cameraId released (open: $camerasInUse)")
+                publish()
+            }
         }
     }
 
@@ -114,6 +129,7 @@ class FoldOverlayService : AccessibilityService() {
         super.onServiceConnected()
         teardown() // a re-connect on the same instance must not leak the previous run
         gate = FoldGate()
+        foldSuppression = FoldSuppression()
         val h = HingeSource(this)
         hinge = h
         h.start()
@@ -130,22 +146,38 @@ class FoldOverlayService : AccessibilityService() {
         }
         val exclusions = ExclusionRepository(this)
         excluded = exclusions.excludedBlocking()
-        sc.launch { exclusions.excluded.collect { excluded = it } }
+        sc.launch {
+            exclusions.excluded.collect {
+                excluded = it
+                Log.i(TAG, "exclusions: $it")
+                publish()
+            }
+        }
         cameraPackage = InstalledApps.camera(this)?.packageName
         cameraManager = getSystemService(CameraManager::class.java)?.also {
             it.registerAvailabilityCallback(cameraCallback, mainHandler)
         }
+        Log.i(TAG, "suppression wired: camera=$cameraPackage cameraCallback=${cameraManager != null} excluded=$excluded")
         val dm = getSystemService(DisplayManager::class.java)
         displayManager = dm
         dm.registerDisplayListener(displayListener, Handler(Looper.getMainLooper()))
         sync()
+        publish()
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
-        val pkg = event.packageName?.toString()?.takeIf { it.isNotBlank() && it != packageName } ?: return
-        foreground[event.displayId] = pkg
+        val pkg = event.packageName?.toString()
+        val cls = event.className?.toString()
+        if (!foreground.onWindowStateChanged(event.displayId, pkg, cls)) return
+        Log.i(TAG, "foreground display=${event.displayId} pkg=$pkg ($cls)")
+        publish()
     }
+
+    private fun isActivity(pkg: String, cls: String): Boolean = runCatching {
+        packageManager.getActivityInfo(ComponentName(pkg, cls), PackageManager.ComponentInfoFlags.of(0))
+        true
+    }.getOrDefault(false)
 
     override fun onInterrupt() = Unit
 
@@ -173,6 +205,19 @@ class FoldOverlayService : AccessibilityService() {
         stopFrames()
         hinge?.stop()
         hinge = null
+        publish()
+    }
+
+    /** Mirrors the suppression inputs into [SuppressionDiagnostics] for the in-app readout. Main thread. */
+    private fun publish() {
+        SuppressionDiagnostics.state.value = SuppressionSnapshot(
+            connected = hinge != null,
+            foreground = foreground.foreground.toMap(),
+            camerasInUse = camerasInUse.toSet(),
+            cameraPackage = cameraPackage,
+            excludedCount = excluded.size,
+            lastFold = lastFold,
+        )
     }
 
     private fun sync() {
@@ -277,10 +322,18 @@ class FoldOverlayService : AccessibilityService() {
         val lastEvent = h.lastEventNanos.value
         val idleSeconds = if (lastEvent == 0L) 0f else (SystemClock.elapsedRealtimeNanos() - lastEvent) / 1e9f
         val moving = gate.update(angle, idleSeconds, hasEvent = lastEvent != 0L)
-        // Per-app decision is frozen at fold start (the cover launcher takes the foreground mid-fold);
-        // an open camera suppresses instantly, whenever it opens.
-        val appNow = anyAppSuppressed(foreground.values, excluded, cameraPackage)
-        val suppressed = overlaySuppressed(latch.update(moving, appNow), cameraInUse = camerasInUse.isNotEmpty())
+        // Re-evaluated from live state every frame. Sticky-on for the fold: the cover launcher taking the
+        // foreground mid-fold cannot un-suppress it, but a camera or excluded app arriving mid-fold suppresses.
+        val cameraActive = camerasInUse.isNotEmpty()
+        val apps = foreground.foreground.values
+        val suppressed = foldSuppression.update(moving, shouldSuppressOverlay(cameraActive, apps, excluded, cameraPackage)) {
+            foldDecisionText(cameraActive, apps, excluded, cameraPackage)
+        }
+        foldSuppression.takeFinishedFold()?.let {
+            lastFold = "${LocalTime.now().truncatedTo(ChronoUnit.SECONDS)} $it"
+            Log.i(TAG, "fold done: $it")
+            publish()
+        }
         val nowMs = SystemClock.uptimeMillis()
         var anyVisible = false
         for (o in overlays.values) {
