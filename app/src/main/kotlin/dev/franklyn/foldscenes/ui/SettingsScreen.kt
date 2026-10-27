@@ -60,16 +60,17 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onOpenApps:
         ) {
             ScreenHeader("Settings", onBack)
             SettingsCard {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(16.dp)) {
-                    Text("Theme", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                    SingleChoiceSegmentedButtonRow {
+                // Label above a full-width control: the label never shares a row, so it cannot wrap mid-word.
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Theme", style = MaterialTheme.typography.bodyLarge.copy(letterSpacing = 0.sp))
+                    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                         THEME_LABELS.forEachIndexed { i, (value, label) ->
                             SegmentedButton(
                                 selected = mode == value,
                                 onClick = { viewModel.setThemeMode(value) },
                                 shape = SegmentedButtonDefaults.itemShape(i, THEME_LABELS.size),
                                 icon = {},
-                            ) { Text(label) }
+                            ) { Text(label, maxLines = 1) }
                         }
                     }
                 }
