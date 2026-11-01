@@ -7,10 +7,13 @@ import dev.franklyn.foldscenes.data.AppEntry
 import dev.franklyn.foldscenes.data.CameraRow
 import dev.franklyn.foldscenes.data.ExclusionRepository
 import dev.franklyn.foldscenes.data.InstalledApps
+import dev.franklyn.foldscenes.data.LocationAutoOffRepository
+import dev.franklyn.foldscenes.data.LocationAutoOffSettings
 import dev.franklyn.foldscenes.data.ThemeMode
 import dev.franklyn.foldscenes.data.buildAppRows
 import dev.franklyn.foldscenes.data.excludedCount
 import dev.franklyn.foldscenes.data.exclusionSummary
+import dev.franklyn.foldscenes.location.hasWriteSecureSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -23,12 +26,22 @@ import kotlinx.coroutines.launch
 /** Settings state: theme override, exclusion set, and the live app list (null until loaded). */
 class SettingsViewModel(app: Application) : AndroidViewModel(app) {
     private val repository = ExclusionRepository(app)
+    private val locationRepository = LocationAutoOffRepository(app)
 
     val themeMode: StateFlow<ThemeMode> = repository.themeMode
         .stateIn(viewModelScope, SharingStarted.Eagerly, repository.themeModeBlocking())
 
     val excluded: StateFlow<Set<String>> = repository.excluded
         .stateIn(viewModelScope, SharingStarted.Eagerly, repository.excludedBlocking())
+
+    val locationAutoOff: StateFlow<LocationAutoOffSettings> = locationRepository.settings
+        .stateIn(viewModelScope, SharingStarted.Eagerly, locationRepository.settingsBlocking())
+
+    /** True once `adb shell pm grant ... WRITE_SECURE_SETTINGS` has been run; false means the
+     *  notification-reminder fallback is what actually fires. Call [refreshLocationPermission] on
+     *  resume since this can only change outside the app (via adb), same as [refreshApps]. */
+    private val _hasLocationWritePermission = MutableStateFlow(hasWriteSecureSettings(app))
+    val hasLocationWritePermission: StateFlow<Boolean> = _hasLocationWritePermission.asStateFlow()
 
     private val _apps = MutableStateFlow<List<AppEntry>?>(null)
     val apps: StateFlow<List<AppEntry>?> = _apps.asStateFlow()
@@ -61,5 +74,18 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setThemeMode(mode: ThemeMode) {
         viewModelScope.launch { repository.setThemeMode(mode) }
+    }
+
+    fun setLocationAutoOffEnabled(enabled: Boolean) {
+        viewModelScope.launch { locationRepository.setEnabled(enabled) }
+    }
+
+    fun setLocationAutoOffIntervalMinutes(minutes: Int) {
+        viewModelScope.launch { locationRepository.setIntervalMinutes(minutes) }
+    }
+
+    /** Re-reads WRITE_SECURE_SETTINGS; only `adb shell pm grant` can change it, so call on resume. */
+    fun refreshLocationPermission() {
+        _hasLocationWritePermission.value = hasWriteSecureSettings(getApplication())
     }
 }

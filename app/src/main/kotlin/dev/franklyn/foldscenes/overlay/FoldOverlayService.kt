@@ -19,6 +19,7 @@ import android.view.accessibility.AccessibilityEvent
 import dev.franklyn.foldscenes.BuildConfig
 import dev.franklyn.foldscenes.data.ExclusionRepository
 import dev.franklyn.foldscenes.data.InstalledApps
+import dev.franklyn.foldscenes.data.LocationAutoOffRepository
 import dev.franklyn.foldscenes.data.SceneRepository
 import dev.franklyn.foldscenes.fold.FoldGate
 import dev.franklyn.foldscenes.fold.FoldSuppression
@@ -31,6 +32,8 @@ import dev.franklyn.foldscenes.fold.foldDecisionText
 import dev.franklyn.foldscenes.fold.panelFor
 import dev.franklyn.foldscenes.fold.progress
 import dev.franklyn.foldscenes.fold.shouldSuppressOverlay
+import dev.franklyn.foldscenes.location.LocationAutoOffController
+import dev.franklyn.foldscenes.location.LocationState
 import dev.franklyn.foldscenes.scene.Scenes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -75,6 +78,13 @@ class FoldOverlayService : AccessibilityService() {
     private var cameraManager: CameraManager? = null
     private var foldSuppression = FoldSuppression()
     private var lastFold: String? = null
+    private val locationController = LocationAutoOffController(locationOn = { LocationState.isOn(this) })
+    private var locationPollPosted = false
+    private val locationPoll = Runnable {
+        locationPollPosted = false
+        locationController.tick(this, SystemClock.elapsedRealtime())
+        scheduleLocationPoll()
+    }
 
     // Fires for ANY process opening a PUBLIC camera ID; needs no permission. Camera IDs the HAL marks
     // system-only or hidden are never reported to a non-system listener (CameraService
@@ -157,6 +167,12 @@ class FoldOverlayService : AccessibilityService() {
         cameraManager = getSystemService(CameraManager::class.java)?.also {
             it.registerAvailabilityCallback(cameraCallback, mainHandler)
         }
+        val locationAutoOff = LocationAutoOffRepository(this)
+        locationController.updateSettings(locationAutoOff.settingsBlocking())
+        sc.launch {
+            locationAutoOff.settings.collect { locationController.updateSettings(it) }
+        }
+        scheduleLocationPoll()
         Log.i(TAG, "suppression wired: camera=$cameraPackage cameraCallback=${cameraManager != null} excluded=$excluded")
         val dm = getSystemService(DisplayManager::class.java)
         displayManager = dm
@@ -205,6 +221,8 @@ class FoldOverlayService : AccessibilityService() {
         stopFrames()
         hinge?.stop()
         hinge = null
+        mainHandler.removeCallbacks(locationPoll)
+        locationPollPosted = false
         publish()
     }
 
@@ -299,6 +317,12 @@ class FoldOverlayService : AccessibilityService() {
         mainHandler.postDelayed(resumePoll, POLL_MS)
     }
 
+    private fun scheduleLocationPoll() {
+        if (locationPollPosted) return
+        locationPollPosted = true
+        mainHandler.postDelayed(locationPoll, LOCATION_POLL_MS)
+    }
+
     private fun postFrame() {
         if (hinge == null) return // after teardown nothing may be scheduled
         mainHandler.removeCallbacks(resumePoll)
@@ -360,5 +384,6 @@ class FoldOverlayService : AccessibilityService() {
         const val EPS = 0.001f
         const val LOG_INTERVAL_MS = 100L
         const val POLL_MS = 250L
+        const val LOCATION_POLL_MS = 60_000L // 1 min cadence is enough for a minutes/hours timer
     }
 }

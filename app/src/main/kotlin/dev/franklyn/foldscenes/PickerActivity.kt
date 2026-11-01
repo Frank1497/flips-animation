@@ -91,6 +91,7 @@ class PickerActivity : ComponentActivity() {
         serviceEnabled = ServiceStatus.isEnabled(this)
         reducedMotion = isReducedMotion(this)
         settings.refreshApps()
+        settings.refreshLocationPermission()
     }
 }
 

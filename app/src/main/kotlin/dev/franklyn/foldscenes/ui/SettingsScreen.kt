@@ -16,6 +16,7 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -28,6 +29,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.franklyn.foldscenes.data.LOCATION_INTERVAL_PRESETS_MINUTES
+import dev.franklyn.foldscenes.data.LocationAutoOffSettings
 import dev.franklyn.foldscenes.data.ThemeMode
 import dev.franklyn.foldscenes.fold.SuppressionDiagnostics
 import dev.franklyn.foldscenes.fold.SuppressionSnapshot
@@ -52,6 +55,8 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onOpenApps:
     val mode by viewModel.themeMode.collectAsStateWithLifecycle()
     val summary by viewModel.summary.collectAsStateWithLifecycle()
     val diagnostics by SuppressionDiagnostics.state.collectAsStateWithLifecycle()
+    val locationAutoOff by viewModel.locationAutoOff.collectAsStateWithLifecycle()
+    val hasLocationPermission by viewModel.hasLocationWritePermission.collectAsStateWithLifecycle()
 
     Scaffold { innerPadding ->
         Column(
@@ -89,6 +94,12 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onOpenApps:
                 }
             }
             DiagnosticsCard(diagnostics)
+            LocationAutoOffCard(
+                settings = locationAutoOff,
+                hasPermission = hasLocationPermission,
+                onEnabledChange = viewModel::setLocationAutoOffEnabled,
+                onIntervalChange = viewModel::setLocationAutoOffIntervalMinutes,
+            )
             Spacer(Modifier.size(8.dp))
         }
     }
@@ -116,3 +127,52 @@ fun SettingsCard(onClick: (() -> Unit)? = null, content: @Composable () -> Unit)
         modifier = if (onClick != null) base.clickable(role = Role.Button, onClick = onClick) else base,
     ) { content() }
 }
+
+/**
+ * Point 4: turns location off automatically once it has been on continuously for [settings.intervalMinutes].
+ * The permission row tells the truth about what will actually happen — a direct OS write when
+ * WRITE_SECURE_SETTINGS is granted (adb only), a reminder notification otherwise.
+ */
+@Composable
+private fun LocationAutoOffCard(
+    settings: LocationAutoOffSettings,
+    hasPermission: Boolean,
+    onEnabledChange: (Boolean) -> Unit,
+    onIntervalChange: (Int) -> Unit,
+) {
+    SettingsCard {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.weight(1f)) {
+                    Text("Auto-off location", style = MaterialTheme.typography.bodyLarge.copy(letterSpacing = 0.sp))
+                    Text(
+                        if (hasPermission) {
+                            "Turns location off directly if it stays on too long."
+                        } else {
+                            "No permission to turn location off — sends a reminder instead. " +
+                                "Grant it: adb shell pm grant dev.franklyn.foldscenes android.permission.WRITE_SECURE_SETTINGS"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(checked = settings.enabled, onCheckedChange = onEnabledChange)
+            }
+            if (settings.enabled) {
+                Text("Check after", style = MaterialTheme.typography.labelLarge)
+                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                    LOCATION_INTERVAL_PRESETS_MINUTES.forEachIndexed { i, minutes ->
+                        SegmentedButton(
+                            selected = settings.intervalMinutes == minutes,
+                            onClick = { onIntervalChange(minutes) },
+                            shape = SegmentedButtonDefaults.itemShape(i, LOCATION_INTERVAL_PRESETS_MINUTES.size),
+                            icon = {},
+                        ) { Text(formatInterval(minutes), maxLines = 1) }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun formatInterval(minutes: Int): String = if (minutes < 60) "${minutes}m" else "${minutes / 60}h"
