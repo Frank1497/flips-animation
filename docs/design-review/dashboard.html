@@ -251,8 +251,16 @@ function buildPicker(container, mode) {
 buildPicker(document.getElementById('phone-light'), 'light');
 buildPicker(document.getElementById('phone-dark'), 'dark');
 
+// Two live states so clicking shows both real outcomes: light mock = adb-granted (direct write),
+// dark mock = ungranted (notification fallback) — the two actual code paths in LocationAutoOffAction.
+const settingsState = {
+  light: { on: true, hasPermission: true, interval: 1 },
+  dark: { on: true, hasPermission: false, interval: 1 },
+};
+
 function buildSettings(container, mode) {
   const t = theme(mode);
+  const state = settingsState[mode];
   container.style.background = t.bg;
   container.innerHTML = `
     <div class="screen" style="background:${t.bg};color:${t.onbg};">
@@ -280,15 +288,43 @@ function buildSettings(container, mode) {
         <div style="display:flex;align-items:center;justify-content:space-between;">
           <div>
             <div class="title">Auto-off location</div>
+            ${state.on ? `<div class="subtitle" data-target="Auto-off permission status (${mode})">${
+              state.hasPermission
+                ? 'Turns location off directly if it stays on too long.'
+                : 'No permission — sends a reminder instead. Grant: adb shell pm grant dev.franklyn.foldscenes android.permission.WRITE_SECURE_SETTINGS'
+            }</div>` : ''}
           </div>
-          <div class="toggle-switch" style="background:${t.border};" data-target="Auto-off location toggle (${mode})">
-            <div class="thumb" style="left:2px;"></div>
+          <div class="toggle-switch" id="autooff-toggle-${mode}" style="background:${state.on ? t.primary : t.border};cursor:pointer;" data-target="Auto-off location toggle (${mode})">
+            <div class="thumb" style="left:${state.on ? '15px' : '2px'};transition:left .15s;"></div>
           </div>
         </div>
+        ${state.on ? `
+        <div class="subtitle" style="margin:8px 0 4px;" data-target="Auto-off interval label (${mode})">Check after</div>
+        <div class="segmented" style="background:${t.bg};" data-target="Auto-off interval presets (${mode})">
+          ${['15m','30m','1h','2h','4h'].map((label, i) => `
+            <span id="autooff-interval-${mode}-${i}" style="cursor:pointer;${state.interval===i?`background:${t.primary};color:${t.onprimary};`:''}">${label}</span>
+          `).join('')}
+        </div>` : ''}
       </div>
     </div>
   `;
+  // Real click target: the toggle itself flips state and re-renders — not a dead pixel.
+  container.querySelector(`#autooff-toggle-${mode}`).addEventListener('click', (e) => {
+    e.stopPropagation();
+    state.on = !state.on;
+    buildSettings(container, mode);
+  });
+  if (state.on) {
+    ['15m','30m','1h','2h','4h'].forEach((_, i) => {
+      container.querySelector(`#autooff-interval-${mode}-${i}`).addEventListener('click', (e) => {
+        e.stopPropagation();
+        state.interval = i;
+        buildSettings(container, mode);
+      });
+    });
+  }
 }
+
 
 async function buildApps(container, mode) {
   const t = theme(mode);
