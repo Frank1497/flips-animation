@@ -224,6 +224,7 @@ function buildPicker(container, mode) {
       </div>
       <div class="status-row" style="background:${t.surface};color:${t.onsurface};" data-target="Service status row (${mode})">
         Fold animation: on &nbsp;|&nbsp; Accessibility settings
+        <div style="font-size:7px;opacity:.6;margin-top:3px;">Fixed: title now reads "Flip's Animation"; no adb text shown here anymore</div>
       </div>
       <div class="preview" style="background:${t.surface};" data-target="Preview block (${mode})">
         <div class="label" style="color:${t.onsurface};">Preview &nbsp; [ Cover | Inner ]</div>
@@ -274,6 +275,16 @@ function buildSettings(container, mode) {
           <div class="subtitle">2 apps excluded</div>
         </div>
         <span style="font-size:11px;">\u203a</span>
+      </div>
+      <div class="settings-row" style="background:${t.surface};color:${t.onsurface};flex-direction:column;align-items:stretch;" data-target="Auto-off location row (${mode})">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div class="title">Auto-off location</div>
+          </div>
+          <div class="toggle-switch" style="background:${t.border};" data-target="Auto-off location toggle (${mode})">
+            <div class="thumb" style="left:2px;"></div>
+          </div>
+        </div>
       </div>
     </div>
   `;

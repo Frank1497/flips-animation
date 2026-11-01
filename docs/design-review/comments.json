@@ -13,5 +13,30 @@
     "target": "Camera row \u2014 locked, always off (light)",
     "text": "for both dark and light the camera should work with any device installed i the system, as well as the instlalled apps on the system it should be dynamic based on the device it is instlled in",
     "ts": 1792940700735
+  },
+  {
+    "target": "App title (light)",
+    "text": "on the its still called razr fold scenes",
+    "ts": 1793514544053
+  },
+  {
+    "target": "Preview block (light)",
+    "text": "2 and 3 below open accessibilty settings there is some text adb shell...\nwhy is that there, cant it be removed",
+    "ts": 1793514616019
+  },
+  {
+    "target": "Preview block (light)",
+    "text": "2 and 3 below open accessibilty settings there is some text adb shell... why is that there, cant it be removed",
+    "ts": 1793514637364
+  },
+  {
+    "target": "Theme setting row (light)",
+    "text": "in settings page add a new feature lets discuss that in detail",
+    "ts": 1793514733168
+  },
+  {
+    "target": "Auto-off permission status (dark)",
+    "text": "why is there that text below Auto-off location ??",
+    "ts": 1793518339831
   }
 ]

@@ -145,16 +145,18 @@ private fun LocationAutoOffCard(
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.weight(1f)) {
                     Text("Auto-off location", style = MaterialTheme.typography.bodyLarge.copy(letterSpacing = 0.sp))
-                    Text(
-                        if (hasPermission) {
-                            "Turns location off directly if it stays on too long."
-                        } else {
-                            "No permission to turn location off — sends a reminder instead. " +
-                                "Grant it: adb shell pm grant dev.franklyn.foldscenes android.permission.WRITE_SECURE_SETTINGS"
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    if (settings.enabled) {
+                        Text(
+                            if (hasPermission) {
+                                "Turns location off directly if it stays on too long."
+                            } else {
+                                "No permission to turn location off — sends a reminder instead. " +
+                                    "Grant it: adb shell pm grant dev.franklyn.foldscenes android.permission.WRITE_SECURE_SETTINGS"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
                 Switch(checked = settings.enabled, onCheckedChange = onEnabledChange)
             }
