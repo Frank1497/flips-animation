@@ -30,16 +30,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.franklyn.foldscenes.R
 import dev.franklyn.foldscenes.scene.Scenes
-
-private const val ADB_HELP =
-    "adb shell settings put secure enabled_accessibility_services " +
-        "dev.franklyn.foldscenes/dev.franklyn.foldscenes.overlay.FoldOverlayService"
 
 private const val DECLINED_NOTE =
     "You declined the Accessibility API disclosure, so the fold animation stays off. " +
@@ -68,7 +66,7 @@ fun PickerScreen(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                Text("Razr Fold Scenes", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
                 IconButton(onClick = onOpenSettings, modifier = Modifier.semantics { contentDescription = "Settings" }) {
                     Text("\u2699", style = MaterialTheme.typography.headlineSmall)
                 }
@@ -83,7 +81,6 @@ fun PickerScreen(
                 OutlinedButton(onClick = {
                     context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                 }) { Text("Open accessibility settings") }
-                Text(ADB_HELP, style = MaterialTheme.typography.bodySmall)
             } else if (!serviceEnabled) {
                 Text(DECLINED_NOTE, style = MaterialTheme.typography.bodyMedium)
             }
